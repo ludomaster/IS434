@@ -107,7 +107,7 @@ stream = MyStreamer(creds['CONSUMER_KEY'], creds['CONSUMER_SECRET'],
 
 # Start the stream
 # TODO: Add our keywords
-query_terms = ['epl', 'ronaldo', 'messi', 'barca', 'realmadrid']
+query_terms = ['stress', 'depressed', 'tired', 'sad', 'hate']
 stream.statuses.filter(track=query_terms)
 
 my_encoding = find_encoding('EPL_twython.csv')
