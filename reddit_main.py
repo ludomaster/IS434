@@ -8,7 +8,7 @@ from praw.models import MoreComments # used to ignore 'AttributeError: 'MoreComm
 # Submissions docs: https://praw.readthedocs.io/en/latest/code_overview/models/submission.html
 # Comments docs: https://praw.readthedocs.io/en/latest/code_overview/models/comment.html
 
-# Functions
+# Functions 
 
 def get_date(created):
     return dt.datetime.fromtimestamp(created)
