@@ -1,4 +1,4 @@
-import tweepy
+import ast
 import json
 import csv
 import chardet
@@ -9,7 +9,6 @@ from tweepy import OAuthHandler
 from twython import Twython
 from twython import TwythonStreamer
 from collections import Counter
-import ast
 
 consumer_key = 'PUT KEY HERE'
 consumer_secret = 'PUT SECRET HERE'
@@ -22,7 +21,11 @@ credentials['CONSUMER_SECRET'] = consumer_secret
 credentials['ACCESS_TOKEN'] = access_token
 credentials['ACCESS_SECRET'] = access_secret
 
-# Save the credentials object to file
+# (1) If you haven't saved your json file, use this template first!
+#with open("twitter_credentials.json", "w") as file:
+#    json.dump(credentials, file)
+
+# (2) After you saved your json file using your above stated credentials, use this template.
 with open("twitter_credentials.json", "r") as file:
     creds = json.load(file)
 
@@ -56,6 +59,8 @@ df.head(5)
 
 # Filter out unwanted data
 def process_tweet(tweet):
+
+    # TODO: Add wanted data
     d = {}
     d['hashtags'] = [hashtag['text'] for hashtag in tweet['entities']['hashtags']]
     d['text'] = tweet['text'].encode('utf-8')
