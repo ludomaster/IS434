@@ -78,6 +78,7 @@ topics_data = pd.DataFrame(topics_dict)
 _timestamp = topics_data["created"].apply(get_date)
 topics_data = topics_data.assign(timestamp = _timestamp)
 
+# TODO: Close each time you run if not doing tests
 # Opens (or creates) the csv file and writes data to each column. Easily done with pandas .to_csv function.
 with open('reddit_table.csv', 'w+', encoding="utf-8") as file:
     topics_data.to_csv(file, index=False) 
@@ -100,7 +101,7 @@ for comment in submission.comments:
     if isinstance(comment, MoreComments):
         continue
 
-    # Printing comment
+    # Printing comments (top level comments)
     print("Comment: " + str(comment.body))
 
     # Printing reples (second level comments)
@@ -109,8 +110,8 @@ for comment in submission.comments:
 
 # OPTION 2 (A more robust solution)
 # Handling comments and replies (even if it's arbitrarily deep)
+# Breadth-first traversal, going through all top level comments, then all secondary comments, and so on.
 comment_queue = submission.comments[:]
-while comment_queue:
-    comment = comment_queue.pop(0)
+for comment in submission.comments.list():
+    print("=== Author: ", comment.author, "===")
     print(comment.body)
-    comment_queue.extend(comment.replies)
