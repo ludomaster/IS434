@@ -97,7 +97,7 @@ class MyStreamer(TwythonStreamer):
         
     # Save each tweet to csv file
     def save_to_csv(self, tweet):
-        with open(r'EPL_twython.csv', 'a') as f:
+        with open(r'twitter_table.csv', 'a') as f:
             writer = csv.writer(f)
             writer.writerow(list(tweet.values()))
 
@@ -110,7 +110,7 @@ stream = MyStreamer(creds['CONSUMER_KEY'], creds['CONSUMER_SECRET'],
 query_terms = ['stress', 'depressed', 'tired', 'sad', 'hate']
 stream.statuses.filter(track=query_terms)
 
-my_encoding = find_encoding('EPL_twython.csv')
-tweets = pd.read_csv('EPL_twython.csv', encoding=my_encoding, names=['hashtags', 'text', 'user', 'location'])
+my_encoding = find_encoding('twitter_table.csv')
+tweets = pd.read_csv('twitter_table.csv', encoding=my_encoding, names=['hashtags', 'text', 'user', 'location'])
 
 tweets.head()
