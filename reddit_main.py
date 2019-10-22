@@ -1,16 +1,10 @@
 import datetime as dt
 import json
 from collections import defaultdict
-import math
 import praw
 import pandas as pd
-import numpy as np
-import nltk
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pprint import pprint
-from IPython import display
-from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 
 sns.set(style='darkgrid', context='talk', palette='Dark2')
@@ -198,6 +192,8 @@ def main():
     ########################################################
 
     ################## PLOTTING BAR CHART ##################
+
+    df = pd.DataFrame.from_records(results)
 
     fig, ax = plt.subplots(figsize=(8, 8))
 
