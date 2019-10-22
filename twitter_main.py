@@ -1,6 +1,7 @@
 import ast
 import json
 import csv
+from collections import Counter
 import chardet
 import pandas as pd
 from tweepy import Stream
@@ -8,7 +9,6 @@ from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from twython import Twython
 from twython import TwythonStreamer
-from collections import Counter
 
 CONSUMER_KEY = 'PUT KEY HERE'
 CONSUMER_SECRET = 'PUT SECRET HERE'
