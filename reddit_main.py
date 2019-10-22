@@ -1,8 +1,23 @@
 import datetime as dt
 import json
+from collections import defaultdict
+import math
 import praw
 import pandas as pd
-from praw.models import MoreComments # used to ignore 'AttributeError: 'MoreComments' object has no attribute 'body''
+import numpy as np
+import nltk
+import matplotlib.pyplot as plt
+import seaborn as sns
+from pprint import pprint
+from IPython import display
+from nltk.corpus import stopwords
+from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
+
+sns.set(style='darkgrid', context='talk', palette='Dark2')
+
+#TODO: Affected vs. Not affected subreddits piechart (from users)
+#TODO: Keywords piechart (frequency)
+#TODO: Subreddits piechart (frequency)
 
 # General docs: https://praw.readthedocs.io/en/latest/code_overview/models/subreddit.html
 # Submissions docs: https://praw.readthedocs.io/en/latest/code_overview/models/submission.html
@@ -34,10 +49,6 @@ def main():
     credentials['USERNAME'] = USERNAME
     credentials['PASSWORD'] = PASSWORD
 
-    # Use this first time (with your credentials in the start) to initialize your json file
-    #with open("reddit_credentials.json", "w") as file:
-    #    json.dump(credentials, file)
-
     # Use this after initializing your credentials
     with open("reddit_credentials.json", "r") as file:
         creds = json.load(file)
@@ -53,152 +64,153 @@ def main():
     # SUBREDDIT(S)
     subreddit = reddit.subreddit('depression+suicidewatch+singapore+SGExams')
 
-    # KEYWORDS TODO: Put in correct keywords
+    #TODO: Put in correct keywords
     keywords = ['suicidal', 'suicide', 'stress', 'depressed', 'depression', 'sad', 'hate']
 
-    # Each subreddit has five different ways of organizing the topics created by redditors:
-    #   .hot, .new, .controversial, .top, .gilded
-    # Can also use subreddit.search("KEYWORD") to get matching results
-    top_submissions = subreddit.top(limit=1) # Getting top up-voted topics of all time in r/singapore
+    # Getting top up-voted topics of all time
+    top_submissions = subreddit.top(limit=25) 
 
-    # Dictionary of topics and its information to be used as DataFrame
-    topics_dict = {"author": [],
-                "title":[],
-                "score":[],
-                "id":[],
-                "url":[],
-                "comms_num": [],
-                "created": [],
-                "body":[]}
+    
+    #############################################
+    # TABLE DEFINITIONS (Users, Submissions) 3NF    # TODO: Keyword-submission table (many-to-many)
+    #############################################
 
-    # Dictionary of users and their infromation to be uased as DataFrame
-    users_dict = {"author": [],
-                "submissions": [],
-                "comment_karma": [],
-                "link_karma": [],
-                "created": []} #TODO Add more information for user
+    users_dict = {"author_id": [],                  # UserID
+                "author": [],                       # User
+                "submissions": [],                  # Title of submission
+                "comment_karma": [],                # Number of comment karma
+                "link_karma": [],                   # Number of link karma
+                "created": []}                      # Creation date and time
+
+    user_submissions_dict = {"author_id": [],       # User ID
+                            "sub_id": [],           # Sub ID
+                            "submission": [],       # Title of submission
+                            "subreddit": [],        # Subreddit of submission
+                            "created": []}          # Daytime/Nighttime
+
+    keyword_subs = defaultdict(list)                # Sub ID and Keywords
 
     top_post_users = [] #Each user (author) from the top posts saved to check their other submissions/replies
+    riskzone_users = []
 
-    # Checking and saving information of top posts
+    # Sentiment analysis variables
+    results = []
+    headlines = set()
+    sia = SIA()
+
+    #############################################
+    # EVALUATION SUBMISSIONS
+    #############################################
+
     for submission in top_submissions:
         for word in keywords:
 
-            # TODO: Remove this dataset, not needed (dont remove last row "top_post_users.append(submission.author)")
             # Include posts where title has any of keywords in it
-            if word in submission.selftext: # Either .selftext (body) or .title (title of post)
-                topics_dict["author"].append(submission.author)             # OP
-                topics_dict["title"].append(submission.title)               # Title of post
-                topics_dict["score"].append(submission.score)               # Upvotes
-                topics_dict["id"].append(submission.id)                     # ID of specific submission
-                topics_dict["url"].append(submission.url)                   # URL of post
-                topics_dict["comms_num"].append(submission.num_comments)    # Comments on post
-                topics_dict["created"].append(submission.created)           # Date of creation
-                topics_dict["body"].append(submission.selftext)             # Text of post (inside the post)
+            if word in submission.selftext or word in submission.title:     # Either .selftext (body) or .title (title of post)
+                # Adding for sentiment analysis on initial submissions
+                #headlines.add(submission.title)
 
                 # Adds each user to a list
-                top_post_users.append(submission.author)
+                if submission.author not in top_post_users:
+                    top_post_users.append(submission.author)
 
-    riskzone_users = []
 
-    # EVALUATE EACH ACCOUNT ***THIS NEEDS A LOT OF ATTENTION/IMPROVEMENT AND INCLUDE MORE CONSTRAINTS ETC***
+    
+    #############################################
+    # EVALUATING USERS & THEIR SUBMISSIONS
+    #############################################
+
     for account in top_post_users:
         user = reddit.redditor(str(account))
-        user_submissions = user.submissions.new()
+        user_submissions = user.submissions.new() # Add limit
 
         # Check every submission that user has made.
         for submission in user_submissions:
             #TODO: Add evaluation constraints (frequency, number of keywords, comments, minimum submissions/comments/replies etc)
+            #TODO: SentimentAnalysis
             
             # If keyword is in any of users submissions, they will be printed out.
             for keyword in keywords:
                 if keyword in submission.title or keyword in submission.selftext:
-                    # TODO: Add more if-constraints
-                    print(f"User: '{account}, keyword found: '{keyword}' title: '{submission.title}'")
 
+                    # Only include unique submissions
+                    if submission.id not in user_submissions_dict.get("sub_id"):
+
+                        # Add submission in preparation for sentiment analysis 
+                        headlines.add(submission.title)
+
+                        user_submissions_dict["sub_id"].append(submission.id)
+                        user_submissions_dict["author_id"].append(user.id)
+                        user_submissions_dict["submission"].append(submission.title)
+                        user_submissions_dict["subreddit"].append(submission.subreddit)
+                        user_submissions_dict["created"].append(submission.created_utc)
+                    
                     # If user checks all flags: FLAG ACCOUNT AS RISKY
-                    riskzone_users.append(user)
-                else:
-                    continue
+                    if user not in riskzone_users:
+                        riskzone_users.append(user)
 
+                    # Add keywords found in specific sub
+                    keyword_subs["sub_id"].append(submission.id)
+                    keyword_subs["keyword"].append(keyword)
 
-
-    # ADD ACCOUNT DATA IF IN RISKZONE
-    # TODO: Add more information? Whatever we want?
-    # TODO: Add number of submissions including keywords
+    # ADD SCORES FOR EACH HEADLINE (in preparation for sentiment analysis)
+    for line in headlines:
+        pol_score = sia.polarity_scores(line)
+        pol_score['title'] = line
+        results.append(pol_score)
+    
+    # ADDS UNIQUE ACCOUNTS AND THEIR DATA
     for user in riskzone_users:
+        users_dict["author_id"].append(user.id)
         users_dict["author"].append(user)
         users_dict["submissions"].append(len(list(user.submissions.new())))
         users_dict["comment_karma"].append(user.comment_karma)
         users_dict["link_karma"].append(user.link_karma)
         users_dict["created"].append(user.created_utc)
 
-
-
     #############################################
     # BELOW IS CODE TO RUN WHEN DATA IS COMPLETE
     #############################################
 
     # Convert dictionary to dataframe to make data more easily readable
-    topics_data = pd.DataFrame(topics_dict)
     users_data = pd.DataFrame(users_dict)
-
-    # Fixing column date for topics (unix time to actual time)
-    _timestamp_topics = topics_data["created"].apply(get_date)
-    topics_data = topics_data.assign(timestamp=_timestamp_topics)
-    topics_data = topics_data.drop(columns="created")
+    users_submissions_data = pd.DataFrame(user_submissions_dict)
+    subs_keywords_data = pd.DataFrame(dict(keyword_subs))
 
     # Fixing column date for users (unix time to actual time)
     _timestamp_users = users_data["created"].apply(get_date)
     users_data = users_data.assign(timestamp=_timestamp_users)
-    users_data = users_data.drop(columns="created")
- 
 
-    # TODO: Close each time you run if not doing tests
-    #with open('reddit_table.csv', 'w+', encoding="utf-8") as file:
-    #    topics_data.to_csv(file, index=False) 
+    _timestamp_users_submissions_data = users_submissions_data["created"].apply(get_date)
+    users_submissions_data = users_submissions_data.assign(timestamp=_timestamp_users_submissions_data)
 
     with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8") as file:
         users_data.to_csv(file, index=False)
 
-    #############################################
-    # BELOW IS CODE IS FOR REPLIES
-    #############################################
+    with open('reddit_riskzone_submissions_table.csv', 'w+', encoding="utf-8") as file:
+        users_submissions_data.to_csv(file, index=False)
 
+    with open('reddit_riskzone_keywords_table.csv', 'w+', encoding="utf-8") as file:
+        subs_keywords_data.to_csv(file, index=False)
 
-    # Getting particular submission
-    # First, we need to obtain a submission object. There are 2 ways to do this.
-    # 1) Retrieve by URL
-    # 2) Retrieve by submission ID (which we happen to know, it is '50ycve')
+    ########################################################
+    ################## SENTIMENT ANALYSIS ##################
+    ########################################################
 
-    #Example
+    ################## PLOTTING BAR CHART ##################
 
-    submission = reddit.submission(url='https://www.reddit.com/r/singapore/comments/cfiwzc/feeling_isolated_stressed_and_depressed_more/')
-    #submission = reddit.submission(id='50ycve')
+    fig, ax = plt.subplots(figsize=(8, 8))
 
-    # MoreComments objects will be replaced until there are none left, as long as they satisfy the threshold.
-    submission.comments.replace_more(limit=None)
+    counts = df.risk.value_counts(normalize=True) * 100
 
-    # OPTION 1 (Not that robust solution)
-    # Handling comments and replies
-    for comment in submission.comments:
-        if isinstance(comment, MoreComments):
-            continue
+    sns.barplot(x=counts.index, y=counts, ax=ax)
 
-        # Printing comments (top level comments)
-        #print("Comment: " + str(comment.body))
+    ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
+    ax.set_ylabel("Percentage")
 
-        # Printing reples (second level comments)
-        #for reply in comment.replies:
-            #print("Reply: " + str(reply.body))
+    plt.show()
 
-    # OPTION 2 (A more robust solution)
-    # Handling comments and replies (even if it's arbitrarily deep)
-    # Breadth-first traversal, going through all top level comments, then all secondary comments, and so on.
-    #comment_queue = submission.comments[:]
-    #for comment in submission.comments.list():
-        #print("=== Author: ", comment.author, "===")
-        #print(comment.body)
+    #################### DONE PLOTTING  ####################
 
 if __name__ == "__main__":
     main()
