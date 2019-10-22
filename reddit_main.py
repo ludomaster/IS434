@@ -35,7 +35,6 @@ def main():
     """
     Initiation docstring
     """
-
     credentials = {}
     credentials['CLIENT_ID'] = CLIENT_ID
     credentials['CLIENT_SECRET'] = CLIENT_SECRET
@@ -43,7 +42,11 @@ def main():
     credentials['USERNAME'] = USERNAME
     credentials['PASSWORD'] = PASSWORD
 
-    # Use this after initializing your credentials
+    # (1) If you haven't saved your json file, use this template first!
+    #with open("reddit_credentials.json", "w") as file:
+    #    json.dump(credentials, file)
+
+    # (2) Use this after initializing your credentials
     with open("reddit_credentials.json", "r") as file:
         creds = json.load(file)
 
@@ -61,12 +64,11 @@ def main():
     #TODO: Put in correct keywords
     keywords = ['suicidal', 'suicide', 'stress', 'depressed', 'depression', 'sad', 'hate']
 
-    # Getting top up-voted topics of all time
+    # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
     top_submissions = subreddit.top(limit=25) 
-
     
     #############################################
-    # TABLE DEFINITIONS (Users, Submissions) 3NF    # TODO: Keyword-submission table (many-to-many)
+    # TABLE DEFINITIONS (Users, Submissions) 3NF  
     #############################################
 
     users_dict = {"author_id": [],                  # UserID
@@ -84,6 +86,7 @@ def main():
 
     keyword_subs = defaultdict(list)                # Sub ID and Keywords
 
+    # Scraping variables
     top_post_users = [] #Each user (author) from the top posts saved to check their other submissions/replies
     riskzone_users = []
 
@@ -93,46 +96,45 @@ def main():
     sia = SIA()
 
     #############################################
-    # EVALUATION SUBMISSIONS
+    ########## EVALUATION SUBMISSIONS ###########
     #############################################
 
+    # Check each submission from row 68 to get users
     for submission in top_submissions:
+        # Iterate through all our keywords
         for word in keywords:
-
-            # Include posts where title has any of keywords in it
-            if word in submission.selftext or word in submission.title:     # Either .selftext (body) or .title (title of post)
-                # Adding for sentiment analysis on initial submissions
-                #headlines.add(submission.title)
+            # Include posts where title or body has any of keywords in it
+            if word in submission.selftext or word in submission.title: 
 
                 # Adds each user to a list
                 if submission.author not in top_post_users:
                     top_post_users.append(submission.author)
-
-
     
     #############################################
-    # EVALUATING USERS & THEIR SUBMISSIONS
+    ####### EVALUATING USERS & SUBMISSIONS ######
     #############################################
 
+    # Iterate through every account from our users
     for account in top_post_users:
-        user = reddit.redditor(str(account))
-        user_submissions = user.submissions.new() # Add limit
+        user = reddit.redditor(str(account))            # Redditor object
+        user_submissions = user.submissions.new()       # ListingGenerator object containing submissions
 
-        # Check every submission that user has made.
+        # Iterate through every submission that user has made.
         for submission in user_submissions:
-            #TODO: Add evaluation constraints (frequency, number of keywords, comments, minimum submissions/comments/replies etc)
             #TODO: SentimentAnalysis
-            
-            # If keyword is in any of users submissions, they will be printed out.
+
             for keyword in keywords:
+
+                # Check if keyword exists in either title or body
                 if keyword in submission.title or keyword in submission.selftext:
 
-                    # Only include unique submissions
+                    # Only include unique submissions (if id from submission already exist, ignore)
                     if submission.id not in user_submissions_dict.get("sub_id"):
 
                         # Add submission in preparation for sentiment analysis 
                         headlines.add(submission.title)
 
+                        # Add data to dictionary (in preparation for pandas to do its thing)
                         user_submissions_dict["sub_id"].append(submission.id)
                         user_submissions_dict["author_id"].append(user.id)
                         user_submissions_dict["submission"].append(submission.title)
@@ -140,6 +142,8 @@ def main():
                         user_submissions_dict["created"].append(submission.created_utc)
                     
                     # If user checks all flags: FLAG ACCOUNT AS RISKY
+                    # TODO: Add constraints to flag user (thresholds for minimum amount of subs with keywords etc)
+                    # TODO: Now it adds everyone as long as they have submissions containing keywords
                     if user not in riskzone_users:
                         riskzone_users.append(user)
 
@@ -178,6 +182,11 @@ def main():
     _timestamp_users_submissions_data = users_submissions_data["created"].apply(get_date)
     users_submissions_data = users_submissions_data.assign(timestamp=_timestamp_users_submissions_data)
 
+    # Populate tables with our data (using 'w+' which overrides, not appends)
+    # (1) reddit_riskzone_table.csv contains unique users and their data
+    # (2) reddit_riskzone_submissions_table.csv contains unique risky submissions done by users
+    # (3) reddit_riskzone_keywords_table.csv contains submission id along with what keyword was included
+
     with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8") as file:
         users_data.to_csv(file, index=False)
 
@@ -206,7 +215,7 @@ def main():
 
     plt.show()
 
-    #################### DONE PLOTTING  ####################
+    ############## DONE PLOTTING (FOR NOW)  ################
 
 if __name__ == "__main__":
     main()

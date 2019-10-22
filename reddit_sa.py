@@ -1,3 +1,5 @@
+# NOTE! Not done at all. Just testing things to later implement in reddit_main.py
+
 import datetime as dt
 import json
 from collections import defaultdict
