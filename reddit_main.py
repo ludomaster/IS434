@@ -65,7 +65,7 @@ def main():
     keywords = ['suicidal', 'suicide', 'stress', 'depressed', 'depression', 'sad', 'hate']
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=25) 
+    top_submissions = subreddit.top(limit=10) 
     
     #############################################
     # TABLE DEFINITIONS (Users, Submissions) 3NF  
@@ -92,7 +92,6 @@ def main():
 
     # Sentiment analysis variables
     results = []
-    headlines = set()
     sia = SIA()
 
     #############################################
@@ -106,7 +105,7 @@ def main():
             # Include posts where title or body has any of keywords in it
             if word in submission.selftext or word in submission.title: 
 
-                # Adds each user to a list
+                # Adds each user to a list if not already in list
                 if submission.author not in top_post_users:
                     top_post_users.append(submission.author)
     
@@ -131,8 +130,11 @@ def main():
                     # Only include unique submissions (if id from submission already exist, ignore)
                     if submission.id not in user_submissions_dict.get("sub_id"):
 
-                        # Add submission in preparation for sentiment analysis 
-                        headlines.add(submission.title)
+                        # Sentiment analysis for each submission
+
+                        pol_score = sia.polarity_scores(submission.title)
+                        pol_score['title'] = submission.title
+                        results.append(pol_score)
 
                         # Add data to dictionary (in preparation for pandas to do its thing)
                         user_submissions_dict["sub_id"].append(submission.id)
@@ -152,10 +154,10 @@ def main():
                     keyword_subs["keyword"].append(keyword)
 
     # ADD SCORES FOR EACH HEADLINE (in preparation for sentiment analysis)
-    for line in headlines:
-        pol_score = sia.polarity_scores(line)
-        pol_score['title'] = line
-        results.append(pol_score)
+    #for line in headlines:
+    #    pol_score = sia.polarity_scores(line)
+    #    pol_score['title'] = line
+    #    results.append(pol_score)
     
     # ADDS UNIQUE ACCOUNTS AND THEIR DATA
     for user in riskzone_users:
@@ -187,6 +189,13 @@ def main():
     # (2) reddit_riskzone_submissions_table.csv contains unique risky submissions done by users
     # (3) reddit_riskzone_keywords_table.csv contains submission id along with what keyword was included
 
+    # Adds column to see wether or not title is risky or not
+    df = pd.DataFrame.from_records(results)
+
+    users_submissions_data['risk'] = 0
+    users_submissions_data.loc[df['compound'] > 0.2, 'risk'] = 1
+    users_submissions_data.loc[df['compound'] < -0.2, 'risk'] = -1
+
     with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8") as file:
         users_data.to_csv(file, index=False)
 
@@ -202,18 +211,12 @@ def main():
 
     ################## PLOTTING BAR CHART ##################
 
-    df = pd.DataFrame.from_records(results)
-
-    fig, ax = plt.subplots(figsize=(8, 8))
-
-    counts = df.risk.value_counts(normalize=True) * 100
-
-    sns.barplot(x=counts.index, y=counts, ax=ax)
-
-    ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
-    ax.set_ylabel("Percentage")
-
-    plt.show()
+    #fig, ax = plt.subplots(figsize=(8, 8))
+    #counts = df.risk.value_counts(normalize=True) * 100
+    #sns.barplot(x=counts.index, y=counts, ax=ax)
+    #ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
+    #ax.set_ylabel("Percentage")
+    #plt.show()
 
     ############## DONE PLOTTING (FOR NOW)  ################
 
