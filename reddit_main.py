@@ -101,7 +101,7 @@ def main():
 
     # SUBREDDIT(S)
     #subreddit = reddit.subreddit('singapore+depression+offmychest+self+suicidewatch+SGExams+foreveralone+alone')
-    subreddit = reddit.subreddit('singapore+depression+offmychest')
+    subreddit = reddit.subreddit('depression')
 
     # Keywords with only unique values
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
@@ -178,6 +178,8 @@ def main():
                         pol_score = sia.polarity_scores(submission.title)
                         pol_score['title'] = submission.title
                         results.append(pol_score)
+
+                        # TODO: Maybe only include submissions that's been posted in one our subreddit list?
 
                         # Add data to dictionary (in preparation for pandas to do its thing)
                         user_submissions_dict["sub_id"].append(submission.id)
