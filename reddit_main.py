@@ -68,7 +68,7 @@ def main():
     top_submissions = subreddit.top(limit=10) 
     
     #############################################
-    # TABLE DEFINITIONS (Users, Submissions) 3NF  
+    # TABLE DEFINITIONS (Users, Submissions) 3NF
     #############################################
 
     users_dict = {"author_id": [],                  # UserID
@@ -120,8 +120,6 @@ def main():
 
         # Iterate through every submission that user has made.
         for submission in user_submissions:
-            #TODO: SentimentAnalysis
-
             for keyword in keywords:
 
                 # Check if keyword exists in either title or body
@@ -130,8 +128,7 @@ def main():
                     # Only include unique submissions (if id from submission already exist, ignore)
                     if submission.id not in user_submissions_dict.get("sub_id"):
 
-                        # Sentiment analysis for each submission
-
+                        # Sentiment analysis for each submission title
                         pol_score = sia.polarity_scores(submission.title)
                         pol_score['title'] = submission.title
                         results.append(pol_score)
