@@ -77,37 +77,39 @@ def main():
                         password=creds["PASSWORD"])
 	
 	#read suicide-related keywords in csv
-    df = pd.read_csv("Suicide_Keywords.csv", 
+    df = pd.read_csv("suicide_keywords.csv", 
               header=None,
 			  dtype=str,
               usecols = [i for i in range(1)],
-			  sep='+', 
+			  sep='+',
 			  encoding='latin-1')
+
     #dropping null value columns to avoid errors 
-    df.dropna(inplace = True) 
+    df.dropna(inplace=True) 
+
 	#process dataframe to be a list of keywords
     df[0] = df[0].astype(str)
     df[0] = df[0].str.strip()	
-    df[0] = df.apply(get_keywords,axis=1)
+    df[0] = df.apply(get_keywords, axis=1)
     df[0].apply(word_tokenize)
     df2 = pd.DataFrame(df[0].str.split(',').tolist()).stack()
     df2 = df2.reset_index()
+
     # SUBREDDIT(S)
     subreddit = reddit.subreddit('depression+suicidewatch+singapore+SGExams')
-    #subreddit = reddit.subreddit(keywords)	
 
-    #TODO: Put in correct keywords
-    #keywords = ['suicidal', 'suicide', 'stress', 'depressed', 'depression', 'sad', 'hate']
-    keywords = df2[0].astype(str).values.flatten().tolist()
+    # Keywords with only unique values
+    keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
     print(keywords)
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=10)
-    print(top_submissions)	
+    top_submissions = subreddit.top(limit=5)
     
     #############################################
-    # TABLE DEFINITIONS (Users, Submissions) 3NF
+    # TABLE DEFINITIONS (Users, User Submissions) 3NF
     #############################################
+
+    # TODO: Add submissions_dict to get everything fully 3NF and database-friendly
 
     users_dict = {"author_id": [],                  # UserID
                 "author": [],                       # User
@@ -187,12 +189,6 @@ def main():
                     # Add keywords found in specific sub
                     keyword_subs["sub_id"].append(submission.id)
                     keyword_subs["keyword"].append(keyword)
-
-    # ADD SCORES FOR EACH HEADLINE (in preparation for sentiment analysis)
-    #for line in headlines:
-    #    pol_score = sia.polarity_scores(line)
-    #    pol_score['title'] = line
-    #    results.append(pol_score)
     
     # ADDS UNIQUE ACCOUNTS AND THEIR DATA
     for user in riskzone_users:
@@ -226,7 +222,6 @@ def main():
 
     # Adds column to see wether or not title is risky or not
     df = pd.DataFrame.from_records(results)
-    #print(df)
 
     users_submissions_data['risk'] = 0
     users_submissions_data.loc[df['compound'] > 0.2, 'risk'] = 1
@@ -255,6 +250,6 @@ def main():
     #plt.show()
 
     ############## DONE PLOTTING (FOR NOW)  ################
-	
+
 if __name__ == "__main__":
     main()

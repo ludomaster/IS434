@@ -38,18 +38,21 @@ def main():
     results = []
 	
 	#read suicide-related keywords in csv
-    df = pd.read_csv("Suicide_Keywords.csv", 
+    df = pd.read_csv("suicide_keywords.csv", 
               header=None,
 			  dtype=str,
               usecols = [i for i in range(1)],
 			  sep='+', 
 			  encoding='latin-1')
+
     #dropping null value columns to avoid errors 
     df.dropna(inplace = True) 
+
 	#remove spaces leading & in between phrases
     df[0] = df[0].astype(str)
     df[0] = df[0].str.strip()	
-    df[0] = df[0].str.replace(" ","")
+    df[0] = df[0].str.replace(" ", "")
+
 	#concat all phrases/words with '+'
     keywords = '+'.join(df[0])
 
