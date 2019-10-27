@@ -42,7 +42,7 @@ def main():
               header=None,
 			  dtype=str,
               usecols = [i for i in range(1)],
-			  sep='+', 
+			  sep='+',
 			  encoding='latin-1')
 
     #dropping null value columns to avoid errors 

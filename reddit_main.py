@@ -3,17 +3,13 @@ import json
 from collections import defaultdict
 import praw
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
 import nltk
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
-import nltk
 nltk.download('stopwords')
-from nltk.corpus import stopwords
-import tokenize
 from nltk.tokenize import word_tokenize
+from collections import Counter
 
 sns.set(style='darkgrid', context='talk', palette='Dark2')
 
@@ -32,20 +28,28 @@ USER_AGENT = 'YOUR APP NAME'
 USERNAME = 'YOUR REDDIT USERNAME'
 PASSWORD = 'YOUR REDDIT PASSWORD'
 
+def get_keyword_frequency(k_list):
+    freq = {}
+    for item in k_list: 
+        if item in freq: 
+            freq[item] += 1
+        else: 
+            freq[item] = 1
+    return freq
+
+
 def get_date(created):
     """
     Converts into correct datetime format
     """
     return dt.datetime.fromtimestamp(created)
-	
+
 # This function will be applied to each row in our Pandas Dataframe
 def get_keywords(row):
 	#define the stop_words here
-    stop_words = stopwords.words('english')	
-    text = row[0]
-    lowered = text.lower()
+    lowered = row[0].lower()
     tokens = nltk.tokenize.word_tokenize(lowered)
-    keywords = [keyword for keyword in tokens if keyword.isalpha() and not keyword in stop_words]
+    keywords = [keyword for keyword in tokens if keyword.isalpha() and not keyword in stopwords.words('english')]
     keywords_string = ','.join(keywords)
     return keywords_string
 
@@ -95,15 +99,14 @@ def main():
     df2 = pd.DataFrame(df[0].str.split(',').tolist()).stack()
     df2 = df2.reset_index()
 
-    # SUBREDDIT(S)
+    # SUBREDDIT(S) # TODO: Perform side-wide subreddits
     subreddit = reddit.subreddit('depression+suicidewatch+singapore+SGExams')
 
     # Keywords with only unique values
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
-    print(keywords)
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=5)
+    top_submissions = subreddit.hot(limit=5)
     
     #############################################
     # TABLE DEFINITIONS (Users, User Submissions) 3NF
@@ -121,10 +124,12 @@ def main():
     user_submissions_dict = {"author_id": [],       # User ID
                             "sub_id": [],           # Sub ID
                             "submission": [],       # Title of submission
+                            "comments": [],         # Comments of post
                             "subreddit": [],        # Subreddit of submission
                             "created": []}          # Daytime/Nighttime
 
     keyword_subs = defaultdict(list)                # Sub ID and Keywords
+    keyword_freq = defaultdict(list)                # Keywords and Counter
 
     # Scraping variables
     top_post_users = [] #Each user (author) from the top posts saved to check their other submissions/replies
@@ -177,6 +182,7 @@ def main():
                         user_submissions_dict["sub_id"].append(submission.id)
                         user_submissions_dict["author_id"].append(user.id)
                         user_submissions_dict["submission"].append(submission.title)
+                        user_submissions_dict["comments"].append(submission.num_comments)
                         user_submissions_dict["subreddit"].append(submission.subreddit)
                         user_submissions_dict["created"].append(submission.created_utc)
                     
@@ -189,7 +195,14 @@ def main():
                     # Add keywords found in specific sub
                     keyword_subs["sub_id"].append(submission.id)
                     keyword_subs["keyword"].append(keyword)
-    
+
+    # Prepare keyword data frequency
+    k_count_freq = get_keyword_frequency(keyword_subs["keyword"])
+    for k, val in k_count_freq.items():
+        keyword_freq["keyword"].append(k)
+        keyword_freq["counter"].append(val)
+
+
     # ADDS UNIQUE ACCOUNTS AND THEIR DATA
     for user in riskzone_users:
         users_dict["author_id"].append(user.id)
@@ -199,14 +212,10 @@ def main():
         users_dict["link_karma"].append(user.link_karma)
         users_dict["created"].append(user.created_utc)
 
-    #############################################
-    # BELOW IS CODE TO RUN WHEN DATA IS COMPLETE
-    #############################################
-
     # Convert dictionary to dataframe to make data more easily readable
     users_data = pd.DataFrame(users_dict)
     users_submissions_data = pd.DataFrame(user_submissions_dict)
-    subs_keywords_data = pd.DataFrame(dict(keyword_subs))
+    subs_keywords_data = pd.DataFrame(dict(keyword_freq))
 
     # Fixing column date for users (unix time to actual time)
     _timestamp_users = users_data["created"].apply(get_date)
@@ -215,11 +224,6 @@ def main():
     _timestamp_users_submissions_data = users_submissions_data["created"].apply(get_date)
     users_submissions_data = users_submissions_data.assign(timestamp=_timestamp_users_submissions_data)
 
-    # Populate tables with our data (using 'w+' which overrides, not appends)
-    # (1) reddit_riskzone_table.csv contains unique users and their data
-    # (2) reddit_riskzone_submissions_table.csv contains unique risky submissions done by users
-    # (3) reddit_riskzone_keywords_table.csv contains submission id along with what keyword was included
-
     # Adds column to see wether or not title is risky or not
     df = pd.DataFrame.from_records(results)
 
@@ -227,29 +231,14 @@ def main():
     users_submissions_data.loc[df['compound'] > 0.2, 'risk'] = 1
     users_submissions_data.loc[df['compound'] < -0.2, 'risk'] = -1
 
-    with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8") as file:
+    with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8", newline='') as file:
         users_data.to_csv(file, index=False)
 
-    with open('reddit_riskzone_submissions_table.csv', 'w+', encoding="utf-8") as file:
+    with open('reddit_riskzone_submissions_table.csv', 'w+', encoding="utf-8", newline='') as file:
         users_submissions_data.to_csv(file, index=False)
 
-    with open('reddit_riskzone_keywords_table.csv', 'w+', encoding="utf-8") as file:
+    with open('reddit_riskzone_keywords_table.csv', 'w+', encoding="utf-8", newline='') as file:
         subs_keywords_data.to_csv(file, index=False)
-
-    ########################################################
-    ################## SENTIMENT ANALYSIS ##################
-    ########################################################
-
-    ################## PLOTTING BAR CHART ##################
-
-    #fig, ax = plt.subplots(figsize=(8, 8))
-    #counts = df.risk.value_counts(normalize=True) * 100
-    #sns.barplot(x=counts.index, y=counts, ax=ax)
-    #ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
-    #ax.set_ylabel("Percentage")
-    #plt.show()
-
-    ############## DONE PLOTTING (FOR NOW)  ################
 
 if __name__ == "__main__":
     main()
