@@ -150,8 +150,8 @@ def main():
     for submission in top_submissions:
         # Iterate through all our keywords
         for word in keywords:
-            # Include posts where title or body has any of keywords in it
-            if word in submission.selftext or word in submission.title: 
+            # Include posts where title any of keywords in it
+            if word in submission.title:
 
                 # Adds each user to a list if not already in list
                 if submission.author not in top_post_users:
@@ -237,17 +237,17 @@ def main():
     users_submissions_data.loc[df['compound'] < -0.2, 'risk'] = -1
 
     # Check if directory exists
-    directory = f'csv/{chosen_sub}/'
+    directory = f'subreddits/{chosen_sub}/'
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_users.csv', 'w+', encoding="utf-8", newline='') as file:
+    with open(f'subreddits/{chosen_sub}/reddit_{chosen_sub}_users.csv', 'w+', encoding="utf-8", newline='') as file:
         users_data.to_csv(file, index=False)
 
-    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
+    with open(f'subreddits/{chosen_sub}/reddit_{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
         users_submissions_data.to_csv(file, index=False)
 
-    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_keywords.csv', 'w+', encoding="utf-8", newline='') as file:
+    with open(f'subreddits/{chosen_sub}/reddit_{chosen_sub}_keywords.csv', 'w+', encoding="utf-8", newline='') as file:
         subs_keywords_data.to_csv(file, index=False)
 
 if __name__ == "__main__":
