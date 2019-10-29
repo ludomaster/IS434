@@ -38,7 +38,7 @@ def main():
     # Create our query
     query = {'q': 'HongKong',
             'result_type': 'popular',
-            'count': 10,
+            'count': 5,
             'lang': 'en',
             }
 
@@ -105,6 +105,8 @@ def main():
         def save_to_csv(self, tweet):
             with open(r'twitter_table.csv', 'a') as f:
                 writer = csv.writer(f)
+                headers = ['hashtags', 'text', 'user', 'location']
+                writer.writerow(i for i in headers)
                 writer.writerow(list(tweet.values()))
 
     # Instantiate from our streaming class
