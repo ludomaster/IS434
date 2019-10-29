@@ -2,6 +2,7 @@ import datetime as dt
 import json
 from collections import defaultdict
 import praw
+import os
 import pandas as pd
 import seaborn as sns
 import nltk
@@ -9,7 +10,6 @@ from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
-from collections import Counter
 
 sns.set(style='darkgrid', context='talk', palette='Dark2')
 
@@ -46,7 +46,6 @@ def get_date(created):
 
 # This function will be applied to each row in our Pandas Dataframe
 def get_keywords(row):
-	#define the stop_words here
     lowered = row[0].lower()
     tokens = nltk.tokenize.word_tokenize(lowered)
     keywords = [keyword for keyword in tokens if keyword.isalpha() and not keyword in stopwords.words('english')]
@@ -82,18 +81,18 @@ def main():
 	
 	#read suicide-related keywords in csv
     df = pd.read_csv("suicide_keywords.csv", 
-              header=None,
-			  dtype=str,
-              usecols = [i for i in range(1)],
-			  sep='+',
-			  encoding='latin-1')
+                    header=None,
+			        dtype=str,
+                    usecols = [i for i in range(1)],
+			        sep='+',
+			        encoding='latin-1')
 
     #dropping null value columns to avoid errors 
     df.dropna(inplace=True) 
 
 	#process dataframe to be a list of keywords
     df[0] = df[0].astype(str)
-    df[0] = df[0].str.strip()	
+    df[0] = df[0].str.strip()
     df[0] = df.apply(get_keywords, axis=1)
     df[0].apply(word_tokenize)
     df2 = pd.DataFrame(df[0].str.split(',').tolist()).stack()
@@ -101,7 +100,10 @@ def main():
 
     # SUBREDDIT(S)
     #subreddit = reddit.subreddit('singapore+depression+offmychest+self+suicidewatch+SGExams+foreveralone+alone')
-    subreddit = reddit.subreddit('depression')
+
+    # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
+    chosen_sub = "offmychest"
+    subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
@@ -234,13 +236,18 @@ def main():
     users_submissions_data.loc[df['compound'] > 0.2, 'risk'] = 1
     users_submissions_data.loc[df['compound'] < -0.2, 'risk'] = -1
 
-    with open('reddit_riskzone_table.csv', 'w+', encoding="utf-8", newline='') as file:
+    # Check if directory exists
+    directory = f'csv/{chosen_sub}/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_users.csv', 'w+', encoding="utf-8", newline='') as file:
         users_data.to_csv(file, index=False)
 
-    with open('reddit_riskzone_submissions_table.csv', 'w+', encoding="utf-8", newline='') as file:
+    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
         users_submissions_data.to_csv(file, index=False)
 
-    with open('reddit_riskzone_keywords_table.csv', 'w+', encoding="utf-8", newline='') as file:
+    with open(f'csv/{chosen_sub}/reddit_{chosen_sub}_keywords.csv', 'w+', encoding="utf-8", newline='') as file:
         subs_keywords_data.to_csv(file, index=False)
 
 if __name__ == "__main__":

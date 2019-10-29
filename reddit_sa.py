@@ -1,5 +1,8 @@
 # NOTE! Not done at all. Just testing things to later implement in reddit_main.py
 
+# TODO: Maybe look each submission and apply sentiment analysis?
+# TODO: and then store information regarding: the subreddit, negative vs. positive, keywords used etc
+
 import datetime as dt
 import json
 from collections import defaultdict
