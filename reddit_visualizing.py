@@ -49,8 +49,11 @@ def main():
     Initiation docstring
     """
 	
+    # Change to whatever you want to plot from
+    subreddit = "depression"
+
 	#read suicide-related keywords in csv
-    df = pd.read_csv("reddit_riskzone_submissions_table.csv", 
+    df = pd.read_csv(f"subreddits/{subreddit}/reddit_depression_submissions.csv", 
 			  sep=',',
 			  encoding='latin-1')
     print(df)
@@ -76,7 +79,7 @@ def main():
     neg_lines = list(df[df.risk == -1].submission)
     tokenizer = RegexpTokenizer(r'\w+')
     stop_words = stopwords.words('english')
-    customStopWOrds = ['iâ','one','want','anyone','today',itâ']
+    customStopWOrds = ['iâ','one','want','anyone','today','itâ']
     stop_words.extend(customStopWOrds)
     neg_tokens = []
 	
