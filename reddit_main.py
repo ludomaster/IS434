@@ -98,24 +98,23 @@ def main():
     df2 = pd.DataFrame(df[0].str.split(',').tolist()).stack()
     df2 = df2.reset_index()
 
+
     # SUBREDDIT(S)
     #subreddit = reddit.subreddit('singapore+depression+offmychest+self+suicidewatch+SGExams+foreveralone+alone')
 
     # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
-    chosen_sub = "suicidewatch"
+    chosen_sub = "SGExams"
     subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=100)
+    top_submissions = subreddit.top(limit=10)
     
     #############################################
     # TABLE DEFINITIONS (Users, User Submissions) 3NF
     #############################################
-
-    # TODO: Add submissions_dict to get everything fully 3NF and database-friendly
 
     users_dict = {"author_id": [],                  # UserID
                 "author": [],                       # User
