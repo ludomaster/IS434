@@ -37,7 +37,6 @@ def get_keyword_frequency(k_list):
             freq[item] = 1
     return freq
 
-
 def get_date(created):
     """
     Converts into correct datetime format
@@ -100,17 +99,15 @@ def main():
 
 
     # SUBREDDIT(S)
-    #subreddit = reddit.subreddit('singapore+depression+offmychest+self+suicidewatch+SGExams+foreveralone+alone')
-
     # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
-    chosen_sub = "SGExams"
+    chosen_sub = "depression"
     subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist()))) #remove empty values
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=10)
+    top_submissions = subreddit.top(limit=100)
     
     #############################################
     # TABLE DEFINITIONS (Users, User Submissions) 3NF
