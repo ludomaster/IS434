@@ -3,11 +3,13 @@ import datetime as dt
 import json
 from collections import defaultdict
 import praw
+from prawcore.exceptions import Forbidden
 import os
 import pandas as pd
 import seaborn as sns
 import nltk
 import sys
+from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 nltk.download('stopwords')
@@ -47,9 +49,17 @@ def get_date(created):
     """
     return dt.datetime.fromtimestamp(created)
 
+
+def stemmatize(title):
+    """ 
+    Prepares submission titles by stemmatizing words.
+    """
+    ps = PorterStemmer()
+    tok_word = word_tokenize(title)
+    stem_words = [ps.stem(w) for w in tok_word if w.isalpha()]
+    return stem_words
+
 # This function will be applied to each row in our Pandas Dataframe
-
-
 def get_keywords(row):
     lowered = row[0].lower()
     tokens = nltk.tokenize.word_tokenize(lowered)
@@ -59,8 +69,6 @@ def get_keywords(row):
     return keywords_string
 
 # Instantiation
-
-
 def main():
     """
     Initiation docstring
@@ -109,13 +117,17 @@ def main():
 
     # SUBREDDIT(S)
     # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
-    chosen_sub = "depression"
+    chosen_sub = "suicidewatch"
     subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
     # remove empty values
     keywords = list(
         filter(None, set(df2[0].astype(str).values.flatten().tolist())))
+
+    # Stemmatize keywords to be applied
+    porter = PorterStemmer()
+    stem_keys = [porter.stem(w) for w in keywords if w.isalpha()]
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
     top_submissions = subreddit.top(limit=100)
@@ -157,10 +169,15 @@ def main():
 
     # Check each submission from row 68 to get users
     for submission in top_submissions:
+
+        # Stemmatize title
+        stem_words = stemmatize(submission.title)
+        
         # Iterate through all our keywords
-        for word in keywords:
+        for word in list(set(stem_keys)):
+
             # Include posts where title any of keywords in it
-            if word in submission.title:
+            if word in stem_words:
 
                 # Adds each user to a list if not already in list
                 if submission.author not in top_post_users:
@@ -178,36 +195,42 @@ def main():
 
         # Iterate through every submission that user has made.
         for submission in user_submissions:
-            for keyword in keywords:
+            try:
+                for keyword in list(set(stem_keys)):
 
-                # Check if keyword exists in either title or body
-                if keyword in submission.title:
+                    # Check if keyword exists in either title or body
+                    if keyword in stemmatize(submission.title):
+                        print(f'-- Stemmatized title: {stemmatize(submission.title)}')
+                        print(f'---- {keyword} existed in title.')
 
-                    # Sentiment analysis for each submission title
-                    pol_score = sia.polarity_scores(submission.title)
-                    pol_score['title'] = submission.title
-                    results.append(pol_score)
+                        # Sentiment analysis for each submission title
+                        pol_score = sia.polarity_scores(submission.title)
+                        pol_score['title'] = submission.title
+                        results.append(pol_score)
 
-                    # Add data to dictionary (in preparation for pandas to do its thing)
-                    user_submissions_dict["keyword"].append(keyword)
-                    user_submissions_dict["sub_id"].append(submission.id)
-                    user_submissions_dict["author_id"].append(user.id)
-                    user_submissions_dict["submission"].append(
-                        submission.title)
-                    user_submissions_dict["comments"].append(
-                        submission.num_comments)
-                    user_submissions_dict["subreddit"].append(
-                        submission.subreddit)
-                    user_submissions_dict["created"].append(
-                        submission.created_utc)
+                        # Add data to dictionary (in preparation for pandas to do its thing)
 
-                    # If user checks all flags: FLAG ACCOUNT AS RISKY
-                    if user not in riskzone_users:
-                        riskzone_users.append(user)
+                        user_submissions_dict["keyword"].append(keyword)
+                        user_submissions_dict["sub_id"].append(submission.id)
+                        user_submissions_dict["author_id"].append(user.id)
+                        user_submissions_dict["submission"].append(
+                            submission.title)
+                        user_submissions_dict["comments"].append(
+                            submission.num_comments)
+                        user_submissions_dict["subreddit"].append(
+                            submission.subreddit)
+                        user_submissions_dict["created"].append(
+                            submission.created_utc)
 
-                    # Add keywords found in specific sub
-                    keyword_subs["sub_id"].append(submission.id)
-                    keyword_subs["keyword"].append(keyword)
+                        # If user checks all flags: FLAG ACCOUNT AS RISKY
+                        if user not in riskzone_users:
+                            riskzone_users.append(user)
+
+                        # Add keywords found in specific sub
+                        keyword_subs["sub_id"].append(submission.id)
+                        keyword_subs["keyword"].append(keyword)
+            except Forbidden:
+                print(f'Ops! Forbidden: {Forbidden}')
 
     # Prepare keyword data frequency
     k_count_freq = get_keyword_frequency(keyword_subs["keyword"])

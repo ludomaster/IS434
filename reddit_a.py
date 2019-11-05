@@ -8,9 +8,8 @@ from nltk.stem import PorterStemmer
 from statistics import median
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 
-# TODO Thresholds: Time of tweets, percentage user submissions, comments.
-# TODO: Add Keyword column to submissions
-# TODO: CHeck bug where scoring is different than time_scoring dictionary
+# TODO Thresholds: Time of tweets, percentage user submissions, comments, Keyword frequency scoring
+# TODO: Check bug where scoring is different than time_scoring dictionary
 
 def get_table(subreddit):
     # Get appropriate table depending on subreddit
@@ -96,7 +95,7 @@ def main():
     # Keywords
     keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
 
-    chosen_sub = 'offmychest'
+    chosen_sub = 'singapore'
     sia = SIA()
 
     table = get_table(chosen_sub)
@@ -197,17 +196,18 @@ def main():
             print(f'Total score of submission: {score}')
 
             # Submission scoring
-            _submissions['keywords'].append(keyword_scoring[k_count])   # -1 to -0.5
-            _submissions['user_id'].append(_user.id)                    # No score (used to see user score)
-            _submissions['sub_id'].append(_submission.id)               # No score    
-            _submissions['throwaway'].append(is_throwaway)              # -1 or 1
-            _submissions['percentage'].append(perc_score)               # -1 to 1
-            _submissions['sentiment'].append(sa_scoring)                # -1 to 1
-            _submissions['comments'].append(comments)                   # TODO    
-            _submissions['created'].append(time)                        # -1 to 0
-            _submissions['score'].append(score)                         # -1 to 1   
+            if _submission.id not in _submissions['sub_id']:
+                _submissions['keywords'].append(keyword_scoring[k_count])   # -1 to -0.5
+                _submissions['user_id'].append(_user.id)                    # No score (used to see user score)
+                _submissions['sub_id'].append(_submission.id)               # No score    
+                _submissions['throwaway'].append(is_throwaway)              # -1 or 1
+                _submissions['percentage'].append(perc_score)               # -1 to 1
+                _submissions['sentiment'].append(sa_scoring)                # -1 to 1
+                _submissions['comments'].append(comments)                   # TODO    
+                _submissions['created'].append(time)                        # -1 to 0
+                _submissions['score'].append(score)                         # -1 to 1   
 
-            print(f'...submission added.')
+                print(f'...submission added.')
             print("*****************************************")
 
     sub_data = pd.DataFrame(_submissions)
