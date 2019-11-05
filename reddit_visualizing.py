@@ -22,6 +22,7 @@ import pandas as pd
 import numpy as np
 import nltk
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import seaborn as sns
 from pprint import pprint
 from IPython import display
@@ -30,6 +31,21 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 from nltk.tokenize import word_tokenize, RegexpTokenizer
 from nltk.corpus import stopwords
 from wordcloud import WordCloud
+from nltk.stem import PorterStemmer
+
+ps = PorterStemmer()
+
+from nltk.corpus import wordnet as wn
+def get_lemma(word):
+    lemma = wn.morphy(word)
+    if lemma is None:
+        return word
+    else:
+        return lemma
+    
+from nltk.stem.wordnet import WordNetLemmatizer
+def get_lemma2(word):
+    return WordNetLemmatizer().lemmatize(word)
 
 # read a list of headlines and perform lowercasing, tokenizing, and stopword removal:
 def process_text(headlines):
@@ -43,6 +59,13 @@ def process_text(headlines):
     
     return tokens
 
+def prepare_text_for_lda(text):
+    tokens = tokenize(text)
+    tokens = [token for token in tokens if len(token) > 4]
+    tokens = [token for token in tokens if token not in en_stop]
+    tokens = [get_lemma(token) for token in tokens]
+    return tokens
+	
 # Instantiation
 def main():
     """
@@ -53,9 +76,14 @@ def main():
     subreddit = "depression"
 
 	#read suicide-related keywords in csv
-    df = pd.read_csv(f"subreddits/{subreddit}/reddit_depression_submissions.csv", 
-			  sep=',',
-			  encoding='latin-1')
+    #df = pd.read_csv(f"subreddits/{subreddit}/reddit_depression_submissions.csv", 
+			  #sep=',',
+			  #encoding='latin-1')
+    df = pd.concat(map(pd.read_csv, ['subreddits/depression/reddit_depression_submissions.csv', 
+         'subreddits/foreveralone/reddit_foreveralone_submissions.csv',
+		 'subreddits/offmychest/reddit_offmychest_submissions.csv',
+		 'subreddits/singapore/reddit_singapore_submissions.csv',
+		 'subreddits/suicidewatch/reddit_suicidewatch_submissions.csv']))
     print(df)
 	
 	##############################################################################
@@ -79,13 +107,16 @@ def main():
     neg_lines = list(df[df.risk == -1].submission)
     tokenizer = RegexpTokenizer(r'\w+')
     stop_words = stopwords.words('english')
-    customStopWOrds = ['iâ','one','want','anyone','today','itâ']
+    customStopWOrds = ['iâ','one','want','anyone','today','itâ','suicidal','depressed','would','get','make','really','else','even',
+       'ever','know','think','day','much','going','feeling','person','died','everyone','dead','everything','feel','like',
+	   'life','someone','always','still','way','sometimes','things','thoughts','something','every','back','years']
     stop_words.extend(customStopWOrds)
     neg_tokens = []
 	
     for line in neg_lines:
         toks = tokenizer.tokenize(line)
         toks = [t.lower() for t in toks if t.lower() not in stop_words]
+        #toks = [ps.stem(t) for t in toks]
         neg_tokens.extend(toks)
     
     plt.style.use('ggplot')
@@ -115,6 +146,25 @@ def main():
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
     plt.show()
+    #tokenized_data = []
+    #for text in neg_lines:
+        #tokenized_data.append(clean_text(text))
+	
+	#LDA with Gensim
+    #from gensim import corpora
+    #dictionary = corpora.Dictionary(tokenized_data)
+    #corpus = [dictionary.doc2bow(text) for text in tokenized_data]
+    #import pickle
+    #pickle.dump(corpus, open('corpus.pkl', 'wb'))
+    #dictionary.save('dictionary.gensim')
+	
+    #import gensim
+    #NUM_TOPICS = 5
+    #ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics = NUM_TOPICS, id2word=dictionary, passes=15)
+    #ldamodel.save('model5.gensim')
+    #topics = ldamodel.print_topics(num_words=4)
+    #for topic in topics:
+       #print(topic)
 	
 if __name__ == "__main__":
     main()
