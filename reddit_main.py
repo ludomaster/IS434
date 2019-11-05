@@ -188,6 +188,7 @@ def main():
                         pol_score = sia.polarity_scores(submission.title)
                         pol_score['title'] = submission.title
                         results.append(pol_score)
+
                         # Add data to dictionary (in preparation for pandas to do its thing)
                         user_submissions_dict["keyword"].append(keyword)
                         user_submissions_dict["sub_id"].append(submission.id)
@@ -202,8 +203,6 @@ def main():
                             submission.created_utc)
 
                     # If user checks all flags: FLAG ACCOUNT AS RISKY
-                    # TODO: Add constraints to flag user (thresholds for minimum amount of subs with keywords etc)
-                    # TODO: Now it adds everyone as long as they have submissions containing keywords
                     if user not in riskzone_users:
                         riskzone_users.append(user)
 
