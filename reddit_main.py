@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import seaborn as sns
 import nltk
+import sys
 from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 nltk.download('stopwords')
@@ -64,6 +65,7 @@ def main():
     """
     Initiation docstring
     """
+
     credentials = {}
     credentials['CLIENT_ID'] = CLIENT_ID
     credentials['CLIENT_SECRET'] = CLIENT_SECRET
@@ -179,28 +181,25 @@ def main():
             for keyword in keywords:
 
                 # Check if keyword exists in either title or body
-                if keyword in submission.title or keyword in submission.selftext:
+                if keyword in submission.title:
 
-                    # Only include unique submissions (if id from submission already exist, ignore)
-                    if submission.id not in user_submissions_dict.get("sub_id"):
+                    # Sentiment analysis for each submission title
+                    pol_score = sia.polarity_scores(submission.title)
+                    pol_score['title'] = submission.title
+                    results.append(pol_score)
 
-                        # Sentiment analysis for each submission title
-                        pol_score = sia.polarity_scores(submission.title)
-                        pol_score['title'] = submission.title
-                        results.append(pol_score)
-
-                        # Add data to dictionary (in preparation for pandas to do its thing)
-                        user_submissions_dict["keyword"].append(keyword)
-                        user_submissions_dict["sub_id"].append(submission.id)
-                        user_submissions_dict["author_id"].append(user.id)
-                        user_submissions_dict["submission"].append(
-                            submission.title)
-                        user_submissions_dict["comments"].append(
-                            submission.num_comments)
-                        user_submissions_dict["subreddit"].append(
-                            submission.subreddit)
-                        user_submissions_dict["created"].append(
-                            submission.created_utc)
+                    # Add data to dictionary (in preparation for pandas to do its thing)
+                    user_submissions_dict["keyword"].append(keyword)
+                    user_submissions_dict["sub_id"].append(submission.id)
+                    user_submissions_dict["author_id"].append(user.id)
+                    user_submissions_dict["submission"].append(
+                        submission.title)
+                    user_submissions_dict["comments"].append(
+                        submission.num_comments)
+                    user_submissions_dict["subreddit"].append(
+                        submission.subreddit)
+                    user_submissions_dict["created"].append(
+                        submission.created_utc)
 
                     # If user checks all flags: FLAG ACCOUNT AS RISKY
                     if user not in riskzone_users:

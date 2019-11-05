@@ -9,6 +9,8 @@ from statistics import median
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 
 # TODO Thresholds: Time of tweets, percentage user submissions, comments.
+# TODO: Add Keyword column to submissions
+# TODO: CHeck bug where scoring is different than time_scoring dictionary
 
 def get_table(subreddit):
     # Get appropriate table depending on subreddit
@@ -34,7 +36,8 @@ def main():
     r = authentication()
     ps = PorterStemmer()
 
-    _submissions = {'user_id': [],
+    _submissions = {'keywords': [],
+                    'user_id': [],
                     'sub_id': [],
                     'throwaway': [],
                     'percentage': [],
@@ -83,105 +86,129 @@ def main():
 
     comments_scoring = {} # TODO
 
-    # Keywords
-    keywords = ['kill', 'hate', 'depression', 'die', 'suicide', 'anxiety']
+    keyword_scoring = {1: -0.5,
+                        2: -0.6,
+                        3: -0.7,
+                        4: -0.8,
+                        5: -0.9,
+                        6: -1}
 
-    chosen_sub = 'suicidewatch'
+    # Keywords
+    keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
+
+    chosen_sub = 'offmychest'
     sia = SIA()
 
     table = get_table(chosen_sub)
     for index, row in table.iterrows():
+
+        # Setting base values for each submission
+        is_affected = False
+        k_count = 0
+        k_values = []
+
+        # Current submission
+        _submission = r.submission(row['sub_id'])
+
+        # Stemming
+        tok_word = word_tokenize(row['submission'])
+        stem_words = [ps.stem(w) for w in tok_word if w.isalpha()]
+
+        # Check number of keywords (if any) in title
         for word in keywords:
-            
-            _submission = r.submission(row['sub_id'])
-
-            # Stemming
-            tok_word = word_tokenize(row['submission'])
-            stem_words = [ps.stem(w) for w in tok_word if w.isalpha()]
-
+            # Append value to later score
             if word in stem_words:
-                print(f'Submission #{index} affected: {_submission.title}')
-                print(f'(Stemmed sentence: {stem_words})')
-                print(f"-- '{word}' existed!")
-                # TIME SCORING
-                time = row['timestamp'][11:16]
-                time_score = time_scoring[row['timestamp'][11:13]]
-                print(f'-- TIME SCORE: {time_score}')
+
+                # If keyword exist in sub, make affected and append counter
+                is_affected = True
+                k_count += 1
+                k_values.append(word)
                 
-                # SENTIMENT SCORING 
-                pol_score = sia.polarity_scores(row['submission'])
-                sa_scoring = pol_score['compound']
-                print(f'-- SENT SCORE: {sa_scoring}')
+        # Go on if affected
+        if is_affected:
+            print(f'Submission #{index} affected: {_submission.title} with {k_count} keywords ({keyword_scoring[k_count]} severity)')
+            print(f'(Stemmed sentence: {stem_words})')
+            print(f"-- Keywords found: {k_values}")
+            # TIME SCORING
+            time = row['timestamp'][11:16]
+            time_score = time_scoring[row['timestamp'][11:13]]
+            print(f'-- TIME SCORE: {time_score}')
+            
+            # SENTIMENT SCORING 
+            pol_score = sia.polarity_scores(row['submission'])
+            sa_scoring = pol_score['compound']
+            print(f'-- SENT SCORE: {sa_scoring}')
 
-                # TODO REPLIES SCORING (now only a number of comments)
-                comments = row['comments']
-                print(f'-- COMMENTS: {comments}')
+            # TODO REPLIES SCORING (now only a number of comments)
+            comments = row['comments']
+            print(f'-- COMMENTS: {comments}')
 
-                # THROWAWAY SCORING (-1 if throwaway, -0.5 if not)
-                is_throwaway = -0.25
-                margin = timedelta(days=30)
-                today = datetime.today().date()
-                date = f"{row['timestamp'][5:7]}{row['timestamp'][7:10]}-{row['timestamp'][:4]}"
-                acc_date = datetime.strptime(date, '%m-%d-%Y').date()
-                diff = today - acc_date
+            # THROWAWAY SCORING (-1 if throwaway, -0.5 if not)
+            is_throwaway = -0.25
+            margin = timedelta(days=30)
+            today = datetime.today().date()
+            date = f"{row['timestamp'][5:7]}{row['timestamp'][7:10]}-{row['timestamp'][:4]}"
+            acc_date = datetime.strptime(date, '%m-%d-%Y').date()
+            diff = today - acc_date
 
-                if (today - margin <= acc_date <= today + margin):
-                    is_throwaway = -1
+            if (today - margin <= acc_date <= today + margin):
+                is_throwaway = -1
 
-                print(f'-- THROWAWAY: {is_throwaway} (difference: {diff})')
+            print(f'-- THROWAWAY: {is_throwaway} (difference: {diff})')
 
-                # USER SUBMISSIONS SCORING
-                _user = r.redditor(str(_submission.author))
-                user_submissions = _user.submissions.new(limit=50)
-                print(f'---- Checking submissions from: {_submission.author}')
+            # USER SUBMISSIONS SCORING
+            _user = r.redditor(str(_submission.author))
+            user_submissions = _user.submissions.new(limit=50)
+            print(f'---- Checking submissions from: {_submission.author}')
 
-                count = 0
-                for user_sub in user_submissions:
-                    #for k in keywords:
-                    for k in keywords:
+            count = 0
+            for user_sub in user_submissions:
+                #for k in keywords:
+                for k in keywords:
 
-                        # If title or body of sub include any keyword
-                        if k in user_sub.title or k in user_sub.selftext:
-                            count += 1
-                # PERCENTAGE SCORING
-                try:
-                    percentage = count / len(list(_user.submissions.new()))
-                except ZeroDivisionError:
-                    percentage = 0
-                    print("Error: Can't divide by zero (Percentage set to 0)")
-                perc_2dm = round(percentage, 2)
+                    # If title or body of sub include any keyword
+                    if k in user_sub.title or k in user_sub.selftext:
+                        count += 1
+            # PERCENTAGE SCORING
+            try:
+                percentage = count / len(list(_user.submissions.new()))
+            except ZeroDivisionError:
+                percentage = 0
+                print("Error: Can't divide by zero (Percentage set to 0)")
+            perc_2dm = round(percentage, 2)
 
-                # Scoring of percentage
-                perc_score = 0
-                if round(perc_2dm, 1) > 0.8:
-                    perc_score = -1
-                elif perc_2dm > 0.6 and perc_2dm < 0.8:
-                    perc_score = -0.8
-                elif perc_2dm > 0.4 and perc_2dm < 0.6:
-                    perc_score = -0.6
-                elif perc_2dm > 0.2 and perc_2dm < 0.4:
-                    perc_score = -0.4
-                elif perc_2dm < 0.2:
-                    perc_score = -0.1
+            # Scoring of percentage
+            perc_score = 0
+            if round(perc_2dm, 1) > 0.8:
+                perc_score = -1
+            elif perc_2dm > 0.6 and perc_2dm < 0.8:
+                perc_score = -0.8
+            elif perc_2dm > 0.4 and perc_2dm < 0.6:
+                perc_score = -0.6
+            elif perc_2dm > 0.2 and perc_2dm < 0.4:
+                perc_score = -0.4
+            elif perc_2dm < 0.2:
+                perc_score = -0.1
 
-                print(f"---- {count} of {len(list(_user.submissions.new()))} user submissions included keywords. ({percentage: .2f}%, score: {perc_score})")
+            print(f"---- {count} of {len(list(_user.submissions.new()))} user submissions included keywords. ({percentage: .2f}%, score: {perc_score})")
 
-                # MEDIAN SUBMISSION SCORING
-                score = median([time_score, sa_scoring, is_throwaway, perc_score]) # Comments excluded
-                print(f'Total score of submission: {score}')
+            # MEDIAN SUBMISSION SCORING
+            score = median([time_score, sa_scoring, is_throwaway, perc_score, keyword_scoring[k_count]]) # Comments excluded
+            print(f'Total score of submission: {score}')
 
-                # Submission scoring
-                _submissions['user_id'].append(_user.id)                    # No score (used to see user score)
-                _submissions['sub_id'].append(_submission.id)               # No score    
-                _submissions['throwaway'].append(is_throwaway)              # -1 or 1
-                _submissions['percentage'].append(perc_score)               # -1 to 1
-                _submissions['sentiment'].append(sa_scoring)                # -1 to 1
-                _submissions['comments'].append(comments)                   # TODO    
-                _submissions['created'].append(time)                        # -1 to 0
-                _submissions['score'].append(score)                         # -1 to 1   
+            # Submission scoring
+            _submissions['keywords'].append(keyword_scoring[k_count])   # -1 to -0.5
+            _submissions['user_id'].append(_user.id)                    # No score (used to see user score)
+            _submissions['sub_id'].append(_submission.id)               # No score    
+            _submissions['throwaway'].append(is_throwaway)              # -1 or 1
+            _submissions['percentage'].append(perc_score)               # -1 to 1
+            _submissions['sentiment'].append(sa_scoring)                # -1 to 1
+            _submissions['comments'].append(comments)                   # TODO    
+            _submissions['created'].append(time)                        # -1 to 0
+            _submissions['score'].append(score)                         # -1 to 1   
 
-                print(f'...submission added.')
-                print("*****************************************")
+            print(f'...submission added.')
+            print("*****************************************")
 
     sub_data = pd.DataFrame(_submissions)
 
