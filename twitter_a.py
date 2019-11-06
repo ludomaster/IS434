@@ -49,13 +49,6 @@ def main():
                     6: -1
                     }
 
-    keyword_scoring = {1: -0.5,
-                    2: -0.6,
-                    3: -0.7,
-                    4: -0.8,
-                    5: -0.9,
-                    6: -1}
-
     # Tables
     _tweets = {'keywords': [],
                 'user_id': [],
