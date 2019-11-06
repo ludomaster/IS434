@@ -117,7 +117,7 @@ def main():
 
     # SUBREDDIT(S)
     # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
-    chosen_sub = "suicidewatch"
+    chosen_sub = "foreveralone"
     subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
@@ -130,7 +130,7 @@ def main():
     stem_keys = [porter.stem(w) for w in keywords if w.isalpha()]
 
     # Getting top up-voted topics of all time (can be any amount from .hot, .top, etc)
-    top_submissions = subreddit.top(limit=100)
+    top_submissions = subreddit.top(limit=80)
 
     #############################################
     # TABLE DEFINITIONS (Users, User Submissions) 3NF
@@ -194,8 +194,8 @@ def main():
         user_submissions = user.submissions.new()
 
         # Iterate through every submission that user has made.
-        for submission in user_submissions:
-            try:
+        try:
+            for submission in user_submissions:
                 for keyword in list(set(stem_keys)):
 
                     # Check if keyword exists in either title or body
@@ -229,8 +229,8 @@ def main():
                         # Add keywords found in specific sub
                         keyword_subs["sub_id"].append(submission.id)
                         keyword_subs["keyword"].append(keyword)
-            except Forbidden:
-                print(f'Ops! Forbidden: {Forbidden}')
+        except Forbidden:
+            print(f'Ops! Forbidden: {Forbidden}')
 
     # Prepare keyword data frequency
     k_count_freq = get_keyword_frequency(keyword_subs["keyword"])

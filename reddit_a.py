@@ -95,7 +95,7 @@ def main():
     # Keywords
     keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
 
-    chosen_sub = 'singapore'
+    chosen_sub = 'foreveralone'
     sia = SIA()
 
     table = get_table(chosen_sub)
