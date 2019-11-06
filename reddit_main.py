@@ -282,6 +282,5 @@ def main():
     with open(f'subreddits/{chosen_sub}/reddit_{chosen_sub}_keywords.csv', 'w+', encoding="utf-8", newline='') as file:
         subs_keywords_data.to_csv(file, index=False)
 
-
 if __name__ == "__main__":
     main()

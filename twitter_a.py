@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from datetime import datetime, timedelta
 from tweepy import OAuthHandler, TweepError
+from pandas.io.json import json_normalize
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 from statistics import median
@@ -41,17 +42,8 @@ def main():
                 '09': -0.4, '10': -0.4, '11': -0.2, '12': -0.2, '13': 0, '14': 0, '15': 0, '16': 0,
                 '17': -0.2, '18': -0.2, '19': -0.4, '20': -0.4, '21': -0.6, '22': -0.6, '23': -0.8, '24': -0.8, '00': -0.8}
 
-    keyword_scoring = {1: -0.5,
-                    2: -0.6,
-                    3: -0.7,
-                    4: -0.8,
-                    5: -0.9,
-                    6: -1
-                    }
-
     # Tables
-    _tweets = {'keywords': [],
-                'user_id': [],
+    _tweets = {'user_id': [],
                 'tweet_id': [],
                 'throwaway': [],
                 'percentage': [],
@@ -62,15 +54,28 @@ def main():
                 'score': []
                 }
 
+
+    with open('analysis/keyword_sentiment_twitter.json', 'r') as f:
+        k_s = json.load(f)
+
+    k_s_scoring = {'kill': [],
+                    'hate': [],
+                    'depress': [],
+                    'die': [],
+                    'suicid': [],
+                    'anxieti': []
+                    }
+
     keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
     table = get_table()
+
+    hashtags = {}
 
     for index, row in table.iterrows():
 
         is_affected = False
         k_count = 0
         k_values = []
-        hashtags = []
 
         try:
             current_tweet = api.get_status(row['tweet_id'])
@@ -89,7 +94,7 @@ def main():
         
         if is_affected:
             print(f'Tweet #{index} affected ({k_count} keywords found): {current_tweet.text}')
-            print(f'    Keywords found: {k_values} (Score: {keyword_scoring[k_count]})')
+            print(f'    Keywords found: {k_values}')
 
             # Time
             time = row['created'][11:16]
@@ -101,13 +106,29 @@ def main():
                 if "hashtags" in current_tweet.entities:
                     tags = [ent["text"] for ent in current_tweet.entities["hashtags"] if "text" in ent and ent is not None]
                     if tags is not None:
-                        hashtags = tags
-                        print(f'    HASHTAGS ({len(hashtags)}): {hashtags}')
+                        for h in tags:
+                            if h in hashtags:
+                                hashtags[h] += 1
+                            else:
+                                hashtags[h] = 1
 
             # Sentiment
             pol_score = sia.polarity_scores(row['tweet'])
             sa_scoring = pol_score['compound']
             print(f'    SENTIMENT: {sa_scoring}')
+
+            # KEYWORD SCORING
+            if len(k_values) > 1:
+                for k in k_values:
+                    k_s_scoring[k].append(sa_scoring)
+                    k_s[k] = median(k_s_scoring[k])
+            else:
+                k = k_values[0]
+                k_s_scoring[k].append(sa_scoring)
+                k_s[k] = median(k_s_scoring[k])
+
+            print(f'------------ KEYWORD SCORING ----------')
+            print(*k_s.items(), sep='\n')
 
             # Retweet
             is_retweet = -0.2
@@ -170,7 +191,7 @@ def main():
             print(f'        SUBMISSIONS: {count} / {_user_tweets_total} affected ({perc_2dm}%,, score: {perc_score})')
 
             # Median scoring
-            score = median([time_score, sa_scoring, is_retweet, is_throwaway, perc_score, keyword_scoring[k_count]])
+            score = median([time_score, sa_scoring, is_retweet, is_throwaway, perc_score])
             print(f' = FINAL SCORE: {score}')
 
             # Tweets saved to table
@@ -188,10 +209,32 @@ def main():
 
             print("--------------------------------")
         
+
+    # Save json
+    with open('analysis/keyword_sentiment_twitter.json', 'w+') as f:
+        json.dump(k_s, f)
+
+    with open('analysis/keyword_sentiment_list_twitter.json', 'w+') as f:
+        json.dump(k_s_scoring, f)
+
+    # Load data from json keyword sentiment list
+    with open('analysis/keyword_sentiment_twitter.json', 'r') as f:
+        data = json.loads(f.read())
+    
+    # Prepare data for csv conversion
+    ks_df = json_normalize(data)
+
+    with open('analysis/keyword_sentiment_twitter.csv', 'w+', encoding='utf-8', newline='') as file:
+        ks_df.to_csv(file, index=False)
+
     # Plot dataframe
     tweet_data = pd.DataFrame(_tweets)
 
     # Write entry to csv
+    with open(f'analysis/tweets/twitter_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
+        tweet_data.to_csv(file, index=False)
+
+    print(hashtags)
 
 if __name__ == "__main__":
     main()

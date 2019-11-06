@@ -44,7 +44,7 @@ def main():
                     'comments': [],
                     'score': []
                     }
-                    
+
     _users_scored = {'user_id': [],
                     'username': [],
                     'throwaway': [],
@@ -83,7 +83,7 @@ def main():
 
     comments_scoring = {} # TODO
 
-    with open('analysis/keyword_sentiment.json', 'r') as f:
+    with open('analysis/keyword_sentiment_reddit.json', 'r') as f:
         k_s = json.load(f)
 
     k_s_scoring = {'kill': [],
@@ -229,20 +229,20 @@ def main():
 
 
     # Save json
-    with open('analysis/keyword_sentiment.json', 'w+') as f:
+    with open('analysis/keyword_sentiment_reddit.json', 'w+') as f:
         json.dump(k_s, f)
 
-    with open('analysis/keyword_sentiment_list.json', 'w+') as f:
+    with open('analysis/keyword_sentiment_list_reddit.json', 'w+') as f:
         json.dump(k_s_scoring, f)
 
     # Load data from json keyword sentiment list
-    with open('analysis/keyword_sentiment.json', 'r') as f:
+    with open('analysis/keyword_sentiment_reddit.json', 'r') as f:
         data = json.loads(f.read())
     
     # Prepare data for csv conversion
     ks_df = json_normalize(data)
 
-    with open('analysis/keyword_sentiment.csv', 'w+', encoding='utf-8', newline='') as file:
+    with open('analysis/keyword_sentiment_reddit.csv', 'w+', encoding='utf-8', newline='') as file:
         ks_df.to_csv(file, index=False)
 
     sub_data = pd.DataFrame(_submissions)
