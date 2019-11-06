@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 import pandas as pd
 import praw
-import os
+from pandas.io.json import json_normalize   
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 from statistics import median
@@ -35,8 +35,7 @@ def main():
     r = authentication()
     ps = PorterStemmer()
 
-    _submissions = {'keywords': [],
-                    'user_id': [],
+    _submissions = {'user_id': [],
                     'sub_id': [],
                     'throwaway': [],
                     'percentage': [],
@@ -45,8 +44,7 @@ def main():
                     'comments': [],
                     'score': []
                     }
-
-    # TODO
+                    
     _users_scored = {'user_id': [],
                     'username': [],
                     'throwaway': [],
@@ -85,17 +83,21 @@ def main():
 
     comments_scoring = {} # TODO
 
-    keyword_scoring = {1: -0.5,
-                        2: -0.6,
-                        3: -0.7,
-                        4: -0.8,
-                        5: -0.9,
-                        6: -1}
+    with open('analysis/keyword_sentiment.json', 'r') as f:
+        k_s = json.load(f)
+
+    k_s_scoring = {'kill': [],
+                    'hate': [],
+                    'depress': [],
+                    'die': [],
+                    'suicid': [],
+                    'anxieti': []
+                    }
 
     # Keywords
     keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
 
-    chosen_sub = 'foreveralone'
+    chosen_sub = 'depression'
     sia = SIA()
 
     table = get_table(chosen_sub)
@@ -125,11 +127,11 @@ def main():
                 
         # Go on if affected
         if is_affected:
-            print(f'Submission #{index} affected: {_submission.title} with {k_count} keywords ({keyword_scoring[k_count]} severity)')
+            print(f'Submission #{index} affected: {_submission.title} with {k_count} keywords')
             print(f'(Stemmed sentence: {stem_words})')
             print(f"-- Keywords found: {k_values}")
+
             # TIME SCORING
-            time = row['timestamp'][11:16]
             time_score = time_scoring[row['timestamp'][11:13]]
             print(f'-- TIME SCORE: {time_score}')
             
@@ -138,25 +140,41 @@ def main():
             sa_scoring = pol_score['compound']
             print(f'-- SENT SCORE: {sa_scoring}')
 
+            # KEYWORD SCORING
+            if len(k_values) > 1:
+                for k in k_values:
+                    k_s_scoring[k].append(sa_scoring)
+                    k_s[k] = median(k_s_scoring[k])
+            else:
+                k = k_values[0]
+                k_s_scoring[k].append(sa_scoring)
+                k_s[k] = median(k_s_scoring[k])
+
+            print(f'------------ KEYWORD SCORING ----------')
+            print(*k_s.items(), sep='\n')
+
             # TODO REPLIES SCORING (now only a number of comments)
             comments = row['comments']
             print(f'-- COMMENTS: {comments}')
 
             # THROWAWAY SCORING (-1 if throwaway, -0.5 if not)
+            _user = r.redditor(str(_submission.author))
+            _created = _user.created_utc
+            result_s = str(pd.to_datetime(_created, unit='s'))
+
             is_throwaway = -0.25
             margin = timedelta(days=30)
             today = datetime.today().date()
-            date = f"{row['timestamp'][5:7]}{row['timestamp'][7:10]}-{row['timestamp'][:4]}"
+            date = f'{result_s[5:7]}-{result_s[8:10]}-{result_s[:4]}'
             acc_date = datetime.strptime(date, '%m-%d-%Y').date()
             diff = today - acc_date
+            print(f'Account creation day: {acc_date}')
 
             if (today - margin <= acc_date <= today + margin):
                 is_throwaway = -1
-
             print(f'-- THROWAWAY: {is_throwaway} (difference: {diff})')
 
             # USER SUBMISSIONS SCORING
-            _user = r.redditor(str(_submission.author))
             user_submissions = _user.submissions.new(limit=50)
             print(f'---- Checking submissions from: {_submission.author}')
 
@@ -192,27 +210,45 @@ def main():
             print(f"---- {count} of {len(list(_user.submissions.new()))} user submissions included keywords. ({percentage: .2f}%, score: {perc_score})")
 
             # MEDIAN SUBMISSION SCORING
-            score = median([time_score, sa_scoring, is_throwaway, perc_score, keyword_scoring[k_count]]) # Comments excluded
+            score = median([time_score, sa_scoring, is_throwaway, perc_score]) # Comments excluded
             print(f'Total score of submission: {score}')
 
             # Submission scoring
             if _submission.id not in _submissions['sub_id']:
-                _submissions['keywords'].append(keyword_scoring[k_count])   # -1 to -0.5
                 _submissions['user_id'].append(_user.id)                    # No score (used to see user score)
                 _submissions['sub_id'].append(_submission.id)               # No score    
                 _submissions['throwaway'].append(is_throwaway)              # -1 or 1
                 _submissions['percentage'].append(perc_score)               # -1 to 1
                 _submissions['sentiment'].append(sa_scoring)                # -1 to 1
                 _submissions['comments'].append(comments)                   # TODO    
-                _submissions['created'].append(time)                        # -1 to 0
+                _submissions['created'].append(time_score)                        # -1 to 0
                 _submissions['score'].append(score)                         # -1 to 1   
 
                 print(f'...submission added.')
             print("*****************************************")
 
+
+    # Save json
+    with open('analysis/keyword_sentiment.json', 'w+') as f:
+        json.dump(k_s, f)
+
+    with open('analysis/keyword_sentiment_list.json', 'w+') as f:
+        json.dump(k_s_scoring, f)
+
+    # Load data from json keyword sentiment list
+    with open('analysis/keyword_sentiment.json', 'r') as f:
+        data = json.loads(f.read())
+    
+    # Prepare data for csv conversion
+    ks_df = json_normalize(data)
+
+    with open('analysis/keyword_sentiment.csv', 'w+', encoding='utf-8', newline='') as file:
+        ks_df.to_csv(file, index=False)
+
     sub_data = pd.DataFrame(_submissions)
 
-    with open(f'analysis/{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
+    # Write submission data
+    with open(f'analysis/subreddits/{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
         sub_data.to_csv(file, index=False)
 
     # TODO: User scoring
