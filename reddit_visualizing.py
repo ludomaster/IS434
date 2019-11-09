@@ -21,6 +21,7 @@ import praw
 import pandas as pd
 import numpy as np
 import nltk
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
@@ -30,10 +31,35 @@ from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 from nltk.tokenize import word_tokenize, RegexpTokenizer
 from nltk.corpus import stopwords
-from wordcloud import WordCloud
+from wordcloud import WordCloud, STOPWORDS
+import matplotlib.colors as mcolors
 from nltk.stem import PorterStemmer
+# Gensim
+import gensim
+from gensim.utils import simple_preprocess
+from gensim.parsing.preprocessing import STOPWORDS
+from nltk.stem import WordNetLemmatizer, SnowballStemmer
+from nltk.stem.porter import *
+import gensim.corpora as corpora
+from gensim.utils import simple_preprocess
+from gensim.models import CoherenceModel
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-ps = PorterStemmer()
+#ps = PorterStemmer()
+
+stemmer = PorterStemmer()
+
+def lemmatize_stemming(text):
+    return stemmer.stem(WordNetLemmatizer().lemmatize(text, pos='v'))
+
+def preprocess(text):
+    result = []
+    for token in gensim.utils.simple_preprocess(text):
+        if token not in gensim.parsing.preprocessing.STOPWORDS and len(token) > 3:
+            result.append(lemmatize_stemming(token))
+    return result
+
+
 
 from nltk.corpus import wordnet as wn
 def get_lemma(word):
@@ -84,7 +110,7 @@ def main():
 		 'subreddits/offmychest/reddit_offmychest_submissions.csv',
 		 'subreddits/singapore/reddit_singapore_submissions.csv',
 		 'subreddits/suicidewatch/reddit_suicidewatch_submissions.csv']))
-    print(df)
+    #print(df)
 	
 	##############################################################################
     #####1. PLOTTING BAR CHART of overall sentiment analysis of submissions####
@@ -105,13 +131,17 @@ def main():
     #####2. PLOTTING Negative keyword frequency####
     ##############################################################################
     neg_lines = list(df[df.risk == -1].submission)
+    data_text = df[['submission']]
+    data_text['index'] = data_text.index
+    documents = data_text
     tokenizer = RegexpTokenizer(r'\w+')
     stop_words = stopwords.words('english')
-    customStopWOrds = ['iâ','one','want','anyone','today','itâ','suicidal','depressed','would','get','make','really','else','even',
+    customStopWords = ['iâ','one','want','anyone','today','itâ','suicidal','depressed','would','get','make','really','else','even',
        'ever','know','think','day','much','going','feeling','person','died','everyone','dead','everything','feel','like',
 	   'life','someone','always','still','way','sometimes','things','thoughts','something','every','back','years']
-    stop_words.extend(customStopWOrds)
+    stop_words.extend(customStopWords)
     neg_tokens = []
+    doc_clean = []
 	
     for line in neg_lines:
         toks = tokenizer.tokenize(line)
@@ -123,7 +153,7 @@ def main():
 	
     neg_freq = nltk.FreqDist(neg_tokens)
     neg_freq.most_common(20)
-    print(neg_freq.most_common(20))
+    #print(neg_freq.most_common(20))
     y_val = [x[1] for x in neg_freq.most_common()]
     y_final = []
     for i, k, z, t in zip(y_val[0::4], y_val[1::4], y_val[2::4], y_val[3::4]):
@@ -145,26 +175,71 @@ def main():
     plt.figure(figsize=(10, 7))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
+    #plt.show()
+	##############################################################################
+    #####3. Topic Analysis####
+    ##############################################################################
+    # Build the bigram and trigram models
+    #bigram = gensim.models.Phrases(neg_lines, min_count=5, threshold=100) # higher threshold fewer phrases.
+    #trigram = gensim.models.Phrases(bigram[neg_lines], threshold=100)  
+	# Faster way to get a sentence clubbed as a trigram/bigram
+    #bigram_mod = gensim.models.phrases.Phraser(bigram)
+    #trigram_mod = gensim.models.phrases.Phraser(trigram)
+    processed_docs = documents['submission'].map(preprocess)
+    print(processed_docs[:10])
+    dictionary = gensim.corpora.Dictionary(processed_docs)
+    count = 0
+    for k, v in dictionary.iteritems():
+        #print(k, v)
+        count += 1
+        if count > 10:
+            break
+    dictionary.filter_extremes(no_below=15, no_above=0.5, keep_n=100000)
+    bow_corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
+    #bow_corpus[4310]
+    from gensim import corpora, models
+    tfidf = models.TfidfModel(bow_corpus)
+    corpus_tfidf = tfidf[bow_corpus]
+    from pprint import pprint
+    for doc in corpus_tfidf:
+        pprint(doc)
+        break
+    lda_model = gensim.models.LdaMulticore(bow_corpus, num_topics=10, id2word=dictionary, passes=2, workers=2)
+    for idx, topic in lda_model.print_topics(-1):
+        print('Topic: {} \nWords: {}'.format(idx, topic))
+    topics = lda_model.show_topics(formatted=False)
+	
+    cols = [color for name, color in mcolors.TABLEAU_COLORS.items()]  # more colors: 'mcolors.XKCD_COLORS'
+
+    cloud = WordCloud(stopwords=stop_words,
+                  background_color='white',
+                  width=2500,
+                  height=1800,
+                  max_words=10,
+                  colormap='tab10',
+                  color_func=lambda *args, **kwargs: cols[i],
+                  prefer_horizontal=1.0)
+	
+    fig, axes = plt.subplots(2, 2, figsize=(10,10), sharex=True, sharey=True)
+
+    for i, ax in enumerate(axes.flatten()):
+        fig.add_subplot(ax)
+        topic_words = dict(topics[i][1])
+        cloud.generate_from_frequencies(topic_words, max_font_size=300)
+        plt.gca().imshow(cloud)
+        plt.gca().set_title('Topic ' + str(i), fontdict=dict(size=16))
+        plt.gca().axis('off')
+
+
+    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.axis('off')
+    plt.margins(x=0, y=0)
+    plt.tight_layout()
     plt.show()
-    #tokenized_data = []
-    #for text in neg_lines:
-        #tokenized_data.append(clean_text(text))
-	
-	#LDA with Gensim
-    #from gensim import corpora
-    #dictionary = corpora.Dictionary(tokenized_data)
-    #corpus = [dictionary.doc2bow(text) for text in tokenized_data]
-    #import pickle
-    #pickle.dump(corpus, open('corpus.pkl', 'wb'))
-    #dictionary.save('dictionary.gensim')
-	
-    #import gensim
-    #NUM_TOPICS = 5
-    #ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics = NUM_TOPICS, id2word=dictionary, passes=15)
-    #ldamodel.save('model5.gensim')
-    #topics = ldamodel.print_topics(num_words=4)
-    #for topic in topics:
-       #print(topic)
+    # Form Bigrams
+    #data_words_bigrams = [bigram_mod[doc] for doc in neg_lines]
+    #dictionary = corpora.Dictionary(neg_lines)
+    #corpus = [dictionary.doc2bow(text) for text in neg_lines]
 	
 if __name__ == "__main__":
     main()
