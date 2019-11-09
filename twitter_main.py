@@ -63,10 +63,6 @@ def get_api_authentication():
     return tweepy.API(auth, wait_on_rate_limit=True)
 
 def main():
-    """
-    Test
-    """
-
     # Authentication
     api = get_api_authentication()
     assert api
@@ -96,17 +92,12 @@ def main():
     tweet_keyword_counter = defaultdict(list)
     tweet_keyword_freq = defaultdict(list)
 
-    # TODO
-    tweet_hashtag_couner = defaultdict(list) # Tweet ID, Hashtag
 
 
     # List definitions
     user_ids = []
     hashtags = []
     results = []
-    
-    #TODO
-    hashtags_keywords = [] # Get from csv
 
     # SIA Initializer
     sia = SIA()
@@ -121,7 +112,6 @@ def main():
     keywords = list(filter(None, set(df2[0].astype(str).values.flatten().tolist())))
 
     # main algorithm (getting users from initial search) (2 tweets per keyword)
-    user_counting = 0
     for word in keywords:
         for status in tweepy.Cursor(api.search, 
                                     q=word,
@@ -129,27 +119,15 @@ def main():
 
             # Add to user account list to then iterate through
             if status.user.id not in user_ids:
-                user_counting += 1
-                print(f'User found! Total users found: {user_counting}.')
                 user_ids.append(status.user.id)
-            
-    print(f'Found {len(user_ids)} users.')
 
     # Check all users tweets
     # 1. For every account id that we've saved from initial search, add user
     # 2. For every tweet in that account (with a limit), add tweet
     # 3. For every keyword in our wordlist
     # 4. If that keyword exist in the current tweet: save information.
-    acc = 1
     for acc_id in user_ids:
-
-        # debug
-        accounts = len(user_ids)
-        print(f'Checking account #{acc} of {accounts}')
-        # --end debug
-
         user = api.get_user(acc_id)
-        print(f'-   Current user ID: {acc_id} (username: {user.screen_name})')
 
         # Add user information
         if user.id not in users["user_id"]:
@@ -161,13 +139,11 @@ def main():
             users["following"].append(user.friends_count)
             users["tweets"].append(user.statuses_count)
 
-        c = 0
         ret = 0
         for status in tweepy.Cursor(api.user_timeline, screen_name=user.screen_name, tweet_mode='extended').items(500):
             for word in keywords:
                 if word in status.full_text:
 
-                    c += 1
                     # Polarity score
                     pol_score = sia.polarity_scores(status.full_text)
                     pol_score['tweet'] = status.full_text
@@ -194,20 +170,11 @@ def main():
                             if hashtag is not None:
                                 hashtags.append(hashtag)
 
-                    # TODO: Add emojis
-
                     # Add keywords and their counters
                     tweet_keyword_counter["tweet_id"].append(status.id)
                     tweet_keyword_counter["keyword"].append(word)
                     tweet_keyword_counter["tweet_time"].append(status.created_at)
-        print(f'-        Found {c} tweets (of {user.statuses_count} total) including keywords. Onto next user!')
-        print(f'-            Found {ret} retweets of {user.statuses_count} total.')
         acc += 1
-
-    # ANALYSIS TO DO WITH DATA
-    # TODO: Sentiment Analysis
-    # TODO: Remove accounts by a certain year
-    # TODO: NLP (if not ok with only SIA)
     
     # Get keyword and each frequency
     k_count_freq = calculate_frequency(tweet_keyword_counter["keyword"])

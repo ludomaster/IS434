@@ -1,18 +1,5 @@
 # Used to visualize csv data (plotting)
 
-# TODO:
-# (1) Read data from reddit_riskzone_submissions_table.csv
-# (2) Evaluate polarity scores of 'risk' column (-1, 0, 1)
-# (3) Read data from 'reddit_riskzone_table.csv'
-#  -  Summarize polarity scores for each user
-#  -  Append csv-file with risk-factor for each user
-# (4) TBD
-
-# Results should contain visualizations of: 
-# - overall sentiment analysis of submissions(?)
-# - keyword frequency
-# - users in riskzone vs. not in riskzone (percentages)
-
 import datetime as dt
 import json
 from collections import defaultdict
@@ -40,6 +27,7 @@ from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from nltk.stem.porter import *
+from nltk.stem.wordnet import WordNetLemmatizer
 import gensim.corpora as corpora
 from gensim.utils import simple_preprocess
 from gensim.models import CoherenceModel
@@ -69,7 +57,6 @@ def get_lemma(word):
     else:
         return lemma
     
-from nltk.stem.wordnet import WordNetLemmatizer
 def get_lemma2(word):
     return WordNetLemmatizer().lemmatize(word)
 

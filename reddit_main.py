@@ -46,6 +46,12 @@ def get_keyword_frequency(k_list):
 def get_date(created):
     """
     Converts into correct datetime format
+
+    Parameter: 
+    created: Date in UNIX to convert.
+
+    Returns:
+    datetime: A date in correct format ("2001-01-01 21:24:10")
     """
     return dt.datetime.fromtimestamp(created)
 
@@ -69,7 +75,7 @@ def get_keywords(row):
     return keywords_string
 
 # Instantiation
-def main():
+def main(arg):
     """
     Initiation docstring
     """
@@ -117,7 +123,7 @@ def main():
 
     # SUBREDDIT(S)
     # Subreddit used: 'depression', 'suicidewatch', 'offmychest' TODO: singapore
-    chosen_sub = "foreveralone"
+    chosen_sub = arg
     subreddit = reddit.subreddit(chosen_sub)
 
     # Keywords with only unique values
@@ -283,4 +289,7 @@ def main():
         subs_keywords_data.to_csv(file, index=False)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print("Error: Please include a subreddit to scrape. (ie, 'python.exe reddit_main.py <subreddit>'")
+    else:
+        main(sys.argv[1])

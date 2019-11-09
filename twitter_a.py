@@ -1,5 +1,5 @@
-import tweepy
 import json
+import tweepy
 import pandas as pd
 from datetime import datetime, timedelta
 from tweepy import OAuthHandler, TweepError
@@ -93,13 +93,10 @@ def main():
                 k_values.append(word)
         
         if is_affected:
-            print(f'Tweet #{index} affected ({k_count} keywords found): {current_tweet.text}')
-            print(f'    Keywords found: {k_values}')
 
             # Time
             time = row['created'][11:16]
             time_score = time_scoring[row['created'][11:13]]
-            print(f'    TIME SCORE: {time_score} ({time})') 
 
             # TODO Hashtags
             if hasattr(current_tweet, "entities"):
@@ -127,9 +124,6 @@ def main():
                 k_s_scoring[k].append(sa_scoring)
                 k_s[k] = median(k_s_scoring[k])
 
-            print(f'------------ KEYWORD SCORING ----------')
-            print(*k_s.items(), sep='\n')
-
             # Retweet
             is_retweet = -0.2
             retweets = 0
@@ -138,9 +132,7 @@ def main():
                 retweets = current_tweet.retweet_count
                 print(f'    RT: True (# of RT\'s: {retweets})')
 
-            # TODO Likes
             likes = current_tweet.favorite_count
-            print(f'    LIKES: {likes}')
 
             # Throwaway
             tweet_user = api.get_user(row['user_id'])
@@ -152,11 +144,9 @@ def main():
             date = f'{tweet_user_created[5:7]}-{tweet_user_created[8:10]}-{tweet_user_created[:4]}'
             acc_date = datetime.strptime(date, '%m-%d-%Y').date()
             diff = today - acc_date
-            print(f'    ACC DATE: {acc_date}')
 
             if (today - margin <= acc_date <= today + margin):
                 is_throwaway = -1
-            print(f'    THROWAWAY: {is_throwaway} (difference: {diff})')
 
             # User submissions
             count = 0
@@ -167,14 +157,13 @@ def main():
                 for k in keywords:
                     if k in status.full_text:
                         count += 1
-            print(f'        TOTAL SUBMISSIONS: {_user_tweets_total}')
 
             # Percentage (replies) 
             try:
                 percentage = count / _user_tweets_total
             except ZeroDivisionError:
                 percentage = 0
-                print("        Error: User hasn't made any submissions.")
+                print("Error: User hasn't made any submissions.")
             perc_2dm = round(percentage, 2)
 
             perc_score = 0
@@ -188,11 +177,9 @@ def main():
                 perc_score = -0.4
             elif perc_2dm < 0.2:
                 perc_score = -0.1
-            print(f'        SUBMISSIONS: {count} / {_user_tweets_total} affected ({perc_2dm}%,, score: {perc_score})')
 
             # Median scoring
             score = median([time_score, sa_scoring, is_retweet, is_throwaway, perc_score])
-            print(f' = FINAL SCORE: {score}')
 
             # Tweets saved to table
             if current_tweet.id not in _tweets['tweet_id']:
@@ -205,9 +192,6 @@ def main():
                 _tweets['sentiment'].append(sa_scoring)                 # DONE
                 _tweets['likes'].append(likes)                          # TODO
                 _tweets['score'].append(score)                          # DONE
-                print('Tweet added! Onto next...')
-
-            print("--------------------------------")
         
 
     # Save json
