@@ -1,4 +1,5 @@
 import json
+import sys
 from datetime import datetime, timedelta
 import pandas as pd
 import praw
@@ -30,7 +31,7 @@ def authentication():
     
     return reddit
 
-def main():
+def main(arg):
 
     r = authentication()
     ps = PorterStemmer()
@@ -97,10 +98,9 @@ def main():
     # Keywords
     keywords = ['kill', 'hate', 'depress', 'die', 'suicid', 'anxieti']
 
-    chosen_sub = 'depression'
     sia = SIA()
 
-    table = get_table(chosen_sub)
+    table = get_table(arg)
     for index, row in table.iterrows():
 
         # Setting base values for each submission
@@ -221,7 +221,7 @@ def main():
                 _submissions['percentage'].append(perc_score)               # -1 to 1
                 _submissions['sentiment'].append(sa_scoring)                # -1 to 1
                 _submissions['comments'].append(comments)                   # TODO    
-                _submissions['created'].append(time_score)                        # -1 to 0
+                _submissions['created'].append(time_score)                  # -1 to 0
                 _submissions['score'].append(score)                         # -1 to 1   
 
                 print(f'...submission added.')
@@ -229,29 +229,36 @@ def main():
 
 
     # Save json
-    with open('analysis/keyword_sentiment_reddit.json', 'w+') as f:
-        json.dump(k_s, f)
+    #with open('analysis/keyword_sentiment_reddit.json', 'w+') as f:
+    #    json.dump(k_s, f)
 
-    with open('analysis/keyword_sentiment_list_reddit.json', 'w+') as f:
-        json.dump(k_s_scoring, f)
+    #with open('analysis/keyword_sentiment_list_reddit.json', 'w+') as f:
+    #    json.dump(k_s_scoring, f)
 
     # Load data from json keyword sentiment list
-    with open('analysis/keyword_sentiment_reddit.json', 'r') as f:
-        data = json.loads(f.read())
+    #with open('analysis/keyword_sentiment_reddit.json', 'r') as f:
+    #    data = json.loads(f.read())
     
     # Prepare data for csv conversion
-    ks_df = json_normalize(data)
+    #ks_df = json_normalize(data)
 
-    with open('analysis/keyword_sentiment_reddit.csv', 'w+', encoding='utf-8', newline='') as file:
-        ks_df.to_csv(file, index=False)
+    #with open('analysis/keyword_sentiment_reddit.csv', 'w+', encoding='utf-8', newline='') as file:
+    #    ks_df.to_csv(file, index=False)
 
-    sub_data = pd.DataFrame(_submissions)
+    #sub_data = pd.DataFrame(_submissions)
 
     # Write submission data
-    with open(f'analysis/subreddits/{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
-        sub_data.to_csv(file, index=False)
-
-    # TODO: User scoring
+    #with open(f'analysis/subreddits/{chosen_sub}_submissions.csv', 'w+', encoding="utf-8", newline='') as file:
+    #    sub_data.to_csv(file, index=False)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print("Error: Please include an existing subreddit. (ie, 'python.exe reddit_a.py <subreddit>'")
+        print("     List of available subreddits:")
+        print("     - 'drepression'")
+        print("     - 'foreveralone'")
+        print("     - 'offmychest'")
+        print("     - 'suicidewatch'")
+        print("     - 'singapore'")
+    else:
+        main(sys.argv[1])
