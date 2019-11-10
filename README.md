@@ -10,7 +10,7 @@ Crawling code base for a social analytics project part of the IS434: Social Anal
 
 This application is used by executing different scripts in a sequence. First of all, you need to crawl your data from either Reddit or Twitter:
 
-```python
+```shell
 # Reddit
 $ python3 reddit_main.py <insert subreddit> # ie 'askreddit'
 
@@ -22,7 +22,7 @@ $ python3 twitter_main.py
 
 Secondly, when data is crawled and saved into your csv files, you will want to analyse this data to score each submission/tweet to acknowledge the level of proneness the user has of committing suicide. This is done by applying our analyzing scripts to our recently crawled data:
 
-```python
+```shell
 # Reddit
 $ python3 reddit_a.py <name of one of the subreddits crawled> # ie 'depression'
 
