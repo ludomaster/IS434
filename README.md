@@ -8,6 +8,8 @@ Crawling code base for a social analytics project part of the IS434: Social Anal
 
 ## Usage
 
+NOTE: This application is not made or designed for commercial usage. These scripts will need modifications as well as some sort of data to be executed, however, we will include how it's used briefly. 
+
 This application is used by executing different scripts in a sequence. First of all, you will have to modify reddit_main.py/twitter_main.py with your own API credentials.
 
 When this is done, you need to crawl your data from either Reddit or Twitter:
@@ -18,7 +20,7 @@ $ python3 reddit_main.py <insert subreddit> # ie 'askreddit'
 
 # Twitter
 # Twitter script will need a DataFrame of desired keywords to look through 
-# before running.
+
 $ python3 twitter_main.py
 ```
 
