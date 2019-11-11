@@ -8,7 +8,9 @@ Crawling code base for a social analytics project part of the IS434: Social Anal
 
 ## Usage
 
-This application is used by executing different scripts in a sequence. First of all, you need to crawl your data from either Reddit or Twitter:
+This application is used by executing different scripts in a sequence. First of all, you will have to modify reddit_main.py/twitter_main.py with your own API credentials.
+
+When this is done, you need to crawl your data from either Reddit or Twitter:
 
 ```shell
 # Reddit
@@ -38,4 +40,5 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 Please make sure to update tests as appropriate.
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+
+TBD
