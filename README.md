@@ -20,7 +20,7 @@ $ python3 reddit_main.py <insert subreddit> # ie 'askreddit'
 
 # Twitter
 # Twitter script will need a DataFrame of desired keywords to look through 
-# before running. Modify file accordingly before usage.
+
 $ python3 twitter_main.py
 ```
 
