@@ -42,14 +42,22 @@ def lemmatize_stemming(text):
 
 def preprocess(text):
     result = []
+    stop_words = stopwords.words('english')
+    #customStopWords = ['iâ','one','want','anyone','today','itâ','suicidal','depressed','would','get','make','really','else','even',
+       #'ever','know','think','day','much','going','feeling','person','died','everyone','dead','everything','feel','like',
+	   #'life','someone','always','still','way','sometimes','things','thoughts','something','every','back','years','cares','good']
+    customStopWords = ['like','thinking','killed','things','want','killing','going','good']
+    stop_words.extend(customStopWords)
     for token in gensim.utils.simple_preprocess(text):
-        if token not in gensim.parsing.preprocessing.STOPWORDS and len(token) > 3:
-            result.append(lemmatize_stemming(token))
+        #token = [t.lower() for t in token if t.lower() not in stop_words]
+        if token not in gensim.parsing.preprocessing.STOPWORDS and len(token) > 3 and token not in stop_words:
+            #result.append(lemmatize_stemming(token))
+            result.append(token)
     return result
 
-
-
 from nltk.corpus import wordnet as wn
+<<<<<<< HEAD
+=======
 def get_lemma(word):
     lemma = wn.morphy(word)
     if lemma is None:
@@ -59,25 +67,8 @@ def get_lemma(word):
     
 def get_lemma2(word):
     return WordNetLemmatizer().lemmatize(word)
+>>>>>>> 7c11b4c536ef98246ed147bd57f5a84181e27ff0
 
-# read a list of headlines and perform lowercasing, tokenizing, and stopword removal:
-def process_text(headlines):
-    tokenizer = RegexpTokenizer(r'\w+')
-    stop_words = stopwords.words('english')	
-    tokens = []
-    for line in headlines:
-        toks = tokenizer.tokenize(line)
-        toks = [t.lower() for t in toks if t.lower() not in stop_words]
-        tokens.extend(toks)
-    
-    return tokens
-
-def prepare_text_for_lda(text):
-    tokens = tokenize(text)
-    tokens = [token for token in tokens if len(token) > 4]
-    tokens = [token for token in tokens if token not in en_stop]
-    tokens = [get_lemma(token) for token in tokens]
-    return tokens
 	
 # Instantiation
 def main():
@@ -125,7 +116,8 @@ def main():
     stop_words = stopwords.words('english')
     customStopWords = ['iâ','one','want','anyone','today','itâ','suicidal','depressed','would','get','make','really','else','even',
        'ever','know','think','day','much','going','feeling','person','died','everyone','dead','everything','feel','like',
-	   'life','someone','always','still','way','sometimes','things','thoughts','something','every','back','years']
+	   'life','someone','always','still','way','sometimes','things','thoughts','something','every','back','years','killing','killed'
+	   'keep']
     stop_words.extend(customStopWords)
     neg_tokens = []
     doc_clean = []
@@ -166,12 +158,6 @@ def main():
 	##############################################################################
     #####3. Topic Analysis####
     ##############################################################################
-    # Build the bigram and trigram models
-    #bigram = gensim.models.Phrases(neg_lines, min_count=5, threshold=100) # higher threshold fewer phrases.
-    #trigram = gensim.models.Phrases(bigram[neg_lines], threshold=100)  
-	# Faster way to get a sentence clubbed as a trigram/bigram
-    #bigram_mod = gensim.models.phrases.Phraser(bigram)
-    #trigram_mod = gensim.models.phrases.Phraser(trigram)
     processed_docs = documents['submission'].map(preprocess)
     print(processed_docs[:10])
     dictionary = gensim.corpora.Dictionary(processed_docs)
